@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sidae-secretary"
+version = "0.1.0"
+description = "Sidae Secretary local-first sync agent"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Sidae Secretary" }]
+dependencies = [
+  "typer>=0.12.3",
+  "python-dotenv>=1.0.1",
+  "requests>=2.31.0",
+  "icalendar>=5.0.12",
+  "python-dateutil>=2.9.0",
+  "olefile>=0.47",
+  "python-pptx>=1.0.2",
+  "pypdf>=4.3.1",
+  "playwright>=1.52.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2.0",
+]
+
+[project.scripts]
+sidae = "sidae_secretary.cli:app"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+sidae_secretary = ["ops_dashboard_assets/*.html"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+markers = [
+  "beta_critical: hermetic tests for the University of Seoul beta-critical path",
+]

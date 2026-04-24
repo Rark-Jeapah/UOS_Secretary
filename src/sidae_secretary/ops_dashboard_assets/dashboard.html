@@ -1,0 +1,3307 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UOS Secretary 운영 대시보드</title>
+  <style>
+    :root {
+      --bg: #070c12;
+      --bg-soft: #0d131b;
+      --panel: #111924;
+      --panel-strong: #161f2b;
+      --panel-quiet: #0d141d;
+      --line: rgba(157, 182, 212, 0.14);
+      --line-strong: rgba(157, 182, 212, 0.22);
+      --text: #eef3fb;
+      --muted: #8b9aae;
+      --ok: #49c98f;
+      --warn: #e2a85a;
+      --err: #ee786d;
+      --info: #67bde9;
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.26);
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --font-ui: "SF Pro Display", "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      --font-mono: "SF Mono", "JetBrains Mono", "Menlo", monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(73, 201, 143, 0.10), transparent 26%),
+        radial-gradient(circle at top right, rgba(103, 189, 233, 0.10), transparent 28%),
+        linear-gradient(180deg, #091018 0%, #06090f 100%);
+      color: var(--text);
+      font-family: var(--font-ui);
+    }
+    body {
+      padding: 20px;
+    }
+    a { color: inherit; }
+    .shell {
+      max-width: 1580px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+    .app-header,
+    .section {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(20, 28, 39, 0.98), rgba(13, 19, 28, 0.96));
+      box-shadow: var(--shadow);
+    }
+    .app-header {
+      padding: 20px 22px;
+      display: grid;
+      gap: 16px;
+    }
+    .header-top,
+    .section-head,
+    .digest-item-head,
+    .env-card-head,
+    .process-head,
+    .user-head,
+    .log-file-head,
+    .endpoint-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .header-main {
+      display: grid;
+      gap: 8px;
+    }
+    .eyebrow {
+      color: var(--info);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      font-weight: 750;
+    }
+    .header-copy,
+    .section-copy,
+    .meta-text,
+    .card-meta,
+    .subtle,
+    .list-meta,
+    .mini-note,
+    .log-path,
+    .endpoint-url,
+    .empty,
+    .collapse-body,
+    .field-value,
+    .health-line {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .header-tools {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .search-slot {
+      min-width: 280px;
+      max-width: 360px;
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px dashed rgba(157, 182, 212, 0.22);
+      background: rgba(255, 255, 255, 0.02);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .search-label {
+      color: #dfe9f5;
+      font-weight: 600;
+    }
+    .header-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .meta-pill,
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+    .meta-pill {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.06);
+      color: #dce6f3;
+    }
+    .live-pill::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--ok);
+      flex: 0 0 auto;
+    }
+    .badge,
+    .meta-pill.status-pill {
+      font-weight: 600;
+    }
+    .tone-ok {
+      color: #d8f7e9;
+      background: rgba(73, 201, 143, 0.12);
+      border-color: rgba(73, 201, 143, 0.24);
+    }
+    .tone-warn {
+      color: #f8e7cf;
+      background: rgba(226, 168, 90, 0.12);
+      border-color: rgba(226, 168, 90, 0.24);
+    }
+    .tone-err {
+      color: #ffe0dc;
+      background: rgba(238, 120, 109, 0.12);
+      border-color: rgba(238, 120, 109, 0.24);
+    }
+    .tone-info {
+      color: #d9eef8;
+      background: rgba(103, 189, 233, 0.12);
+      border-color: rgba(103, 189, 233, 0.24);
+    }
+    .section {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+    .section h2,
+    .panel-title {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+    .section-note {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .kpi-card,
+    .digest-item,
+    .env-card,
+    .process-card,
+    .user-card,
+    .log-highlight,
+    .log-file,
+    .endpoint-card,
+    .llm-warning,
+    .summary-card,
+    .detail-item,
+    .field,
+    .list-row {
+      min-width: 0;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.028);
+      transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+    }
+    .kpi-card:hover,
+    .digest-item:hover,
+    .env-card:hover,
+    .process-card:hover,
+    .user-card:hover,
+    .log-highlight:hover,
+    .log-file:hover,
+    .endpoint-card:hover,
+    .llm-warning:hover,
+    .summary-card:hover,
+    .detail-item:hover,
+    .list-row:hover {
+      border-color: var(--line-strong);
+      background: rgba(255, 255, 255, 0.04);
+      transform: translateY(-1px);
+    }
+    .kpi-card {
+      padding: 16px;
+      border-radius: 18px;
+    }
+    .kpi-label,
+    .field-label,
+    .cluster-label,
+    .summary-label,
+    .block-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+    }
+    .kpi-value {
+      margin-top: 10px;
+      font-size: 29px;
+      font-weight: 760;
+      letter-spacing: -0.04em;
+    }
+    .kpi-meta {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .digest-list,
+    .env-grid,
+    .stack,
+    .process-list,
+    .user-list,
+    .log-highlight-list,
+    .log-file-list,
+    .endpoint-list,
+    .llm-warning-list,
+    .mini-list,
+    .detail-list,
+    .raw-lines {
+      display: grid;
+      gap: 10px;
+    }
+    .digest-item,
+    .env-card,
+    .process-card,
+    .user-card,
+    .log-highlight,
+    .log-file,
+    .endpoint-card,
+    .llm-warning {
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .digest-rank {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      font-size: 12px;
+      font-weight: 700;
+      color: #dce6f3;
+    }
+    .digest-title,
+    .env-title,
+    .process-title,
+    .user-title,
+    .log-title,
+    .endpoint-title {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .digest-recommendation,
+    .recommendation {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.03);
+      color: #e6eef9;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .env-card {
+      display: grid;
+      gap: 14px;
+      background: linear-gradient(180deg, rgba(17, 25, 36, 0.98), rgba(12, 18, 27, 0.96));
+    }
+    .env-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #dbe7f4;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .env-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .env-stats,
+    .summary-grid,
+    .detail-grid,
+    .user-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .summary-card,
+    .detail-item,
+    .field,
+    .list-row {
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .summary-value,
+    .field-main {
+      margin-top: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .field-main.small,
+    .summary-value.small {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .cluster {
+      display: grid;
+      gap: 8px;
+    }
+    .cluster-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .cluster-list,
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
+    .detail-list .list-row,
+    .mini-list .list-row {
+      display: grid;
+      gap: 4px;
+    }
+    .secondary-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr) minmax(0, 1.2fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .process-summary,
+    .llm-summary,
+    .user-summary,
+    .logs-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+    }
+    .mono,
+    pre {
+      font-family: var(--font-mono);
+    }
+    pre {
+      margin: 0;
+      max-height: 260px;
+      overflow: auto;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(8, 12, 18, 0.92);
+      color: #dce7f4;
+      font-size: 12px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    details.collapse {
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.02);
+      overflow: hidden;
+    }
+    details.collapse > summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #dce6f3;
+    }
+    details.collapse > summary::-webkit-details-marker {
+      display: none;
+    }
+    details.collapse > summary::after {
+      content: "▾";
+      color: var(--muted);
+      transition: transform 0.16s ease;
+    }
+    details.collapse[open] > summary {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    details.collapse[open] > summary::after {
+      transform: rotate(180deg);
+    }
+    .collapse-body {
+      padding: 12px 14px;
+      display: grid;
+      gap: 12px;
+    }
+    .code-note {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(8, 12, 18, 0.84);
+      color: #dce7f4;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .divider {
+      width: 1px;
+      align-self: stretch;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .empty {
+      padding: 8px 2px;
+    }
+    @media (max-width: 1440px) {
+      .kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .secondary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 980px) {
+      body {
+        padding: 14px;
+      }
+      .comparison-grid,
+      .detail-grid,
+      .env-stats,
+      .user-grid {
+        grid-template-columns: 1fr;
+      }
+      .kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .header-top,
+      .section-head,
+      .digest-item-head,
+      .env-card-head,
+      .process-head,
+      .user-head,
+      .log-file-head,
+      .endpoint-head {
+        flex-direction: column;
+      }
+    }
+    @media (max-width: 640px) {
+      body {
+        padding: 10px;
+      }
+      .app-header,
+      .section {
+        padding: 14px;
+      }
+      .kpi-grid,
+      .summary-grid,
+      .process-summary,
+      .llm-summary,
+      .user-summary,
+      .logs-summary {
+        grid-template-columns: 1fr;
+      }
+      .search-slot {
+        min-width: 0;
+      }
+    }
+
+    :root {
+      --surface: #0e0e0f;
+      --surface-container-lowest: #000000;
+      --surface-container-low: #131315;
+      --surface-container: #19191b;
+      --surface-container-high: #1f1f22;
+      --surface-bright: #2b2c2f;
+      --surface-variant: #252628;
+      --primary: #c0c1ff;
+      --secondary: #06b77f;
+      --tertiary: #ffb148;
+      --error: #ec7c8a;
+      --on-surface: #e7e5e8;
+      --on-surface-variant: #acaaae;
+      --outline-soft: rgba(72, 72, 75, 0.18);
+      --outline-faint: rgba(72, 72, 75, 0.12);
+      --font-ui: "Inter", "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    }
+    body {
+      height: 100%;
+      overflow: hidden;
+      padding: 0;
+      background: var(--surface);
+      color: var(--on-surface);
+      font-family: var(--font-ui);
+      text-rendering: optimizeLegibility;
+    }
+    .tone-ok { --tone: var(--secondary); --tone-bg: rgba(6, 183, 127, 0.12); --tone-border: rgba(6, 183, 127, 0.20); }
+    .tone-warn { --tone: var(--tertiary); --tone-bg: rgba(255, 177, 72, 0.12); --tone-border: rgba(255, 177, 72, 0.20); }
+    .tone-err { --tone: var(--error); --tone-bg: rgba(236, 124, 138, 0.12); --tone-border: rgba(236, 124, 138, 0.22); }
+    .tone-info { --tone: var(--primary); --tone-bg: rgba(192, 193, 255, 0.10); --tone-border: rgba(192, 193, 255, 0.18); }
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--outline-soft);
+      box-shadow: 0 48px 64px -28px rgba(192, 193, 255, 0.10);
+      z-index: 50;
+    }
+    .topbar-inner {
+      height: 100%;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand {
+      flex: 0 0 auto;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--on-surface);
+    }
+    .topbar-meta {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .top-meta-item,
+    .canvas-note,
+    .card-meta,
+    .list-meta,
+    .field-value,
+    .section-copy,
+    .scope-note,
+    .endpoint-url,
+    .log-path,
+    .empty,
+    .collapse-body {
+      color: var(--on-surface-variant);
+      font-size: 12px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .live-chip,
+    .badge,
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 11px;
+      border-radius: 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 800;
+      border: 1px solid var(--tone-border, var(--outline-soft));
+      background: var(--tone-bg, rgba(72, 72, 75, 0.14));
+      color: var(--tone, var(--on-surface));
+    }
+    .live-chip { --tone: var(--secondary); --tone-bg: rgba(6, 183, 127, 0.08); --tone-border: rgba(6, 183, 127, 0.18); }
+    .live-chip::before,
+    .pulse-indicator::before,
+    .signal-dot::before,
+    .user-signal::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: currentColor;
+      flex: 0 0 auto;
+    }
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .search-slot {
+      min-width: 260px;
+      max-width: none;
+      width: auto;
+      padding: 11px 14px;
+      border-radius: 4px;
+      border: 1px solid var(--outline-faint);
+      background: var(--surface-container-low);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--on-surface-variant);
+      font-size: 12px;
+    }
+    .search-label {
+      color: var(--on-surface);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 800;
+    }
+    .status-badge {
+      min-height: 40px;
+      padding: 11px 16px;
+    }
+    .sidebar {
+      position: fixed;
+      top: 72px;
+      left: 0;
+      bottom: 0;
+      width: 320px;
+      background: var(--surface-container-high);
+      border-right: 1px solid var(--outline-soft);
+      display: flex;
+      flex-direction: column;
+      z-index: 30;
+    }
+    .sidebar-brand {
+      padding: 26px 28px 22px;
+    }
+    .sidebar-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+    }
+    .sidebar-subtitle,
+    .scope-label,
+    .module-label,
+    .kpi-label,
+    .env-small-label,
+    .well-label,
+    .block-label,
+    .section-note {
+      color: var(--on-surface-variant);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .sidebar-subtitle {
+      margin-top: 6px;
+    }
+    .side-nav {
+      display: grid;
+      gap: 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 28px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-weight: 700;
+      color: var(--on-surface-variant);
+      transition: background 0.16s ease, transform 0.16s ease, color 0.16s ease;
+    }
+    .nav-item:hover {
+      background: var(--surface-bright);
+      color: var(--on-surface);
+      transform: translateX(2px);
+    }
+    .nav-item.active {
+      background: var(--surface-bright);
+      color: var(--primary);
+      box-shadow: inset 2px 0 0 var(--primary);
+    }
+    .nav-glyph {
+      width: 18px;
+      text-align: center;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 24px 28px 28px;
+    }
+    .scope-card {
+      background: var(--surface-container-lowest);
+      padding: 16px;
+    }
+    .scope-bars {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 5px;
+      margin-top: 10px;
+    }
+    .scope-bar {
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(72, 72, 75, 0.35);
+    }
+    .scope-bar.on {
+      background: var(--secondary);
+    }
+    .workspace {
+      position: fixed;
+      top: 72px;
+      left: 320px;
+      right: 0;
+      bottom: 0;
+      overflow-y: auto;
+      background: var(--surface-container-low);
+    }
+    .canvas {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 28px 40px 40px;
+      display: grid;
+      gap: 24px;
+    }
+    .canvas-note {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .canvas-note::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--secondary);
+      box-shadow: 0 0 0 6px rgba(6, 183, 127, 0.10);
+      flex: 0 0 auto;
+    }
+    .kpi-grid {
+      gap: 12px;
+    }
+    .kpi-card,
+    .module,
+    .env-card,
+    .summary-card,
+    .well,
+    .detail-item,
+    .service-row,
+    .endpoint-row,
+    .user-row,
+    .log-file,
+    .log-highlight,
+    .list-row {
+      min-width: 0;
+      background: var(--surface-container);
+      border: none;
+      box-shadow: none;
+    }
+    .kpi-card {
+      position: relative;
+      padding: 16px 16px 14px;
+      border-radius: 0;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--tone, rgba(72, 72, 75, 0.35));
+    }
+    .kpi-main {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .kpi-value {
+      margin-top: 0;
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      color: var(--on-surface);
+    }
+    .kpi-suffix {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--tone, var(--on-surface-variant));
+    }
+    .kpi-meta {
+      margin-top: 8px;
+      color: var(--on-surface-variant);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+    .module {
+      padding: 22px 24px;
+      border-radius: 0;
+    }
+    .module-head,
+    .digest-row-head,
+    .env-header,
+    .process-head,
+    .user-head,
+    .log-file-head,
+    .endpoint-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .module-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .module-icon {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      background: var(--tone-bg, rgba(192, 193, 255, 0.10));
+      box-shadow: inset 0 0 0 1px var(--tone-border, rgba(192, 193, 255, 0.18));
+      flex: 0 0 auto;
+    }
+    .module-title {
+      margin-top: 2px;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+      font-weight: 800;
+    }
+    .digest-list,
+    .service-list,
+    .endpoint-list,
+    .warning-list,
+    .user-list,
+    .log-file-list {
+      display: grid;
+      gap: 12px;
+    }
+    .digest-row {
+      display: grid;
+      gap: 12px;
+      padding: 16px 18px;
+      background: var(--surface-container-high);
+      box-shadow: inset 2px 0 0 var(--tone, rgba(72, 72, 75, 0.35));
+    }
+    .digest-title,
+    .env-title,
+    .service-name,
+    .endpoint-title,
+    .user-title,
+    .log-title {
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+    .rank-circle {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.18);
+      color: var(--on-surface);
+      font-size: 11px;
+      font-weight: 800;
+      box-shadow: inset 0 0 0 1px var(--outline-faint);
+    }
+    .digest-body {
+      display: grid;
+      gap: 10px;
+    }
+    .digest-context-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .digest-impact {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--on-surface-variant);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .digest-summary {
+      color: var(--on-surface);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .digest-evidence {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      background: var(--surface-container-low);
+      box-shadow: inset 0 0 0 1px var(--outline-faint);
+    }
+    .digest-evidence-list {
+      display: grid;
+      gap: 6px;
+    }
+    .digest-evidence-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: var(--on-surface);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .digest-evidence-item::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      margin-top: 6px;
+      background: var(--tone, var(--on-surface-variant));
+      flex: 0 0 auto;
+    }
+    .digest-footer {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .digest-recommendation,
+    .recommendation,
+    .warning-note {
+      padding: 10px 12px;
+      background: var(--surface-variant);
+      color: var(--on-surface);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .digest-recommendation {
+      flex: 1 1 340px;
+    }
+    .digest-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 14px;
+      background: var(--surface-container-low);
+      color: var(--on-surface);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-decoration: none;
+      box-shadow: inset 0 0 0 1px var(--outline-faint);
+      transition: background 0.16s ease, color 0.16s ease;
+    }
+    .digest-link:hover {
+      background: var(--surface-bright);
+      color: var(--tone, var(--on-surface));
+    }
+    .action-shell,
+    .action-list {
+      display: grid;
+      gap: 12px;
+    }
+    .action-grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.88fr) minmax(0, 1.12fr);
+      gap: 24px;
+    }
+    .action-runner,
+    .action-row {
+      display: grid;
+      gap: 12px;
+      padding: 16px 18px;
+      background: var(--surface-container-high);
+      box-shadow: inset 2px 0 0 var(--tone, rgba(72, 72, 75, 0.35));
+    }
+    .action-runner {
+      --tone: var(--primary);
+    }
+    .action-toolbar,
+    .user-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .action-button-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .action-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 0 12px;
+      border: none;
+      background: var(--surface-container-low);
+      color: var(--on-surface);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      box-shadow: inset 0 0 0 1px var(--outline-faint);
+      cursor: pointer;
+      transition: background 0.16s ease, color 0.16s ease;
+    }
+    .action-button:hover {
+      background: var(--surface-bright);
+      color: var(--primary);
+    }
+    .action-button.secondary:hover {
+      color: var(--secondary);
+    }
+    .action-button.warn:hover {
+      color: var(--tertiary);
+    }
+    .action-button[disabled] {
+      opacity: 0.45;
+      cursor: wait;
+    }
+    .action-meta,
+    .action-summary,
+    .action-note {
+      color: var(--on-surface-variant);
+      font-size: 12px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .action-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--on-surface);
+    }
+    .action-summary {
+      color: var(--on-surface);
+    }
+    .action-detail-list {
+      display: grid;
+      gap: 8px;
+    }
+    .action-detail-item {
+      padding: 10px 12px;
+      background: var(--surface-container-low);
+      color: var(--on-surface);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .env-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .env-card {
+      display: grid;
+      gap: 22px;
+      background: var(--surface-container-high);
+      padding: 24px;
+      border-radius: 0;
+    }
+    .env-header {
+      padding-bottom: 18px;
+      box-shadow: inset 0 -1px 0 var(--outline-soft);
+    }
+    .env-title-wrap {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .env-accent {
+      width: 4px;
+      height: 40px;
+      background: var(--tone, rgba(72, 72, 75, 0.35));
+      flex: 0 0 auto;
+    }
+    .env-title {
+      font-size: 18px;
+      text-transform: uppercase;
+      letter-spacing: -0.04em;
+    }
+    .env-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      color: var(--tone, var(--on-surface-variant));
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .env-health-summary {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--on-surface-variant);
+    }
+    .env-pending {
+      text-align: right;
+      white-space: nowrap;
+    }
+    .env-pending-value,
+    .footer-value,
+    .well-value,
+    .summary-value {
+      margin-top: 6px;
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+    .env-metrics,
+    .summary-grid,
+    .detail-grid,
+    .user-detail-grid,
+    .llm-mini-grid,
+    .log-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .summary-card,
+    .detail-item,
+    .well,
+    .list-row,
+    .log-highlight {
+      padding: 14px 16px;
+      background: var(--surface-container-lowest);
+      border-radius: 0;
+    }
+    .summary-value.small,
+    .field-main.small,
+    .footer-value {
+      font-size: 13px;
+    }
+    .field-main {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--on-surface);
+    }
+    .env-section,
+    .cluster {
+      display: grid;
+      gap: 10px;
+    }
+    .badge-row,
+    .cluster-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .env-two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .plain-list,
+    .detail-list {
+      display: grid;
+      gap: 8px;
+    }
+    .plain-list-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: var(--on-surface);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .plain-list-item::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      margin-top: 6px;
+      background: var(--tone, var(--on-surface-variant));
+      flex: 0 0 auto;
+    }
+    .env-footer {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      background: var(--surface-container-lowest);
+      box-shadow: inset 2px 0 0 var(--tone, rgba(72, 72, 75, 0.35));
+    }
+    .env-footer-cell {
+      padding: 14px 16px;
+      min-width: 0;
+    }
+    .env-footer-cell.right {
+      text-align: right;
+    }
+    .detail-list .list-row {
+      display: grid;
+      gap: 6px;
+      padding: 10px 12px;
+      background: var(--surface-container-low);
+    }
+    details.collapse {
+      border: none;
+      border-radius: 0;
+      background: var(--surface-container-low);
+      box-shadow: inset 0 0 0 1px var(--outline-faint);
+    }
+    details.collapse > summary {
+      color: var(--on-surface);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    details.collapse[open] > summary {
+      box-shadow: inset 0 -1px 0 var(--outline-faint);
+    }
+    .code-note,
+    pre {
+      border-radius: 0;
+      background: var(--surface-container-lowest);
+      color: var(--on-surface);
+    }
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .service-row,
+    .endpoint-row,
+    .user-row,
+    .log-file {
+      padding: 12px 14px;
+      background: var(--surface-container-low);
+      border-radius: 0;
+    }
+    .service-row:hover,
+    .endpoint-row:hover,
+    .user-row:hover,
+    .log-file:hover,
+    .log-highlight:hover {
+      background: var(--surface-bright);
+      transform: none;
+    }
+    .llm-mini-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .endpoint-title,
+    .user-title {
+      font-size: 13px;
+    }
+    .user-row {
+      display: grid;
+      gap: 10px;
+    }
+    .user-trace-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .user-signal {
+      display: inline-flex;
+      align-items: center;
+      color: var(--tone, var(--on-surface-variant));
+      margin-top: 2px;
+    }
+    .user-trace-main {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .user-code {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--tone, var(--on-surface));
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+    }
+    .log-summary-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .log-table-wrap {
+      overflow-x: auto;
+      background: var(--surface-container-low);
+    }
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 780px;
+    }
+    .log-table thead {
+      background: var(--surface-container-lowest);
+    }
+    .log-table th,
+    .log-table td {
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .log-table tbody tr {
+      border-top: 1px solid var(--outline-faint);
+    }
+    .log-table tbody tr:hover {
+      background: var(--surface-bright);
+    }
+    .log-action {
+      text-align: right;
+      white-space: nowrap;
+    }
+    .pulse-indicator {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      color: var(--secondary);
+      background: rgba(6, 183, 127, 0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+    }
+    .pulse-indicator::after {
+      content: "";
+      position: absolute;
+      inset: -6px;
+      border-radius: 999px;
+      border: 1px solid rgba(6, 183, 127, 0.24);
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.86); opacity: 0.9; }
+      70% { transform: scale(1.3); opacity: 0; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+    @media (max-width: 1600px) {
+      .bento-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 1380px) {
+      .action-grid,
+      .env-grid,
+      .log-summary-grid,
+      .env-two-col,
+      .env-metrics,
+      .detail-grid,
+      .user-detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 1180px) {
+      .sidebar {
+        width: 240px;
+      }
+      .workspace {
+        left: 240px;
+      }
+      .topbar-inner {
+        padding: 0 18px;
+      }
+      .canvas {
+        padding: 22px 24px 32px;
+      }
+      .topbar-meta {
+        gap: 14px;
+      }
+      .search-slot {
+        min-width: 180px;
+      }
+    }
+    @media (max-width: 980px) {
+      .sidebar {
+        display: none;
+      }
+      .workspace {
+        left: 0;
+      }
+      .topbar {
+        height: auto;
+      }
+      .topbar-inner {
+        padding: 14px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .topbar-meta,
+      .topbar-actions,
+      .module-head,
+      .env-header,
+      .digest-row-head,
+      .process-head,
+      .log-file-head,
+      .endpoint-head {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .workspace {
+        top: 124px;
+      }
+    }
+    @media (max-width: 640px) {
+      .search-slot {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">UOS Secretary Ops</div>
+      <div class="topbar-meta" id="headerMeta">
+        <div class="live-chip" id="liveIndicator">Live</div>
+        <div class="top-meta-item" id="headerUpdated">Last Updated: -</div>
+        <div class="top-meta-item" id="headerHost">Host -</div>
+        <div class="top-meta-item" id="headerUser">Operator -</div>
+      </div>
+      <div class="topbar-actions">
+        <div class="search-slot" aria-disabled="true">
+          <span class="search-label">검색 슬롯 (Search)</span>
+          <span>Phase 1에서는 자리만 유지</span>
+        </div>
+        <div class="status-badge tone-info" id="headerStatus">상태 계산 중</div>
+      </div>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h2 class="sidebar-title">Precision Ops</h2>
+      <div class="sidebar-subtitle">Terminal v4.2</div>
+    </div>
+    <nav class="side-nav">
+      <a class="nav-item active" href="#kpiRow"><span class="nav-glyph">▦</span><span>Overview</span></a>
+      <a class="nav-item" href="#actionPanelSection"><span class="nav-glyph">▣</span><span>Admin Runs</span></a>
+      <a class="nav-item" href="#servicesPanel"><span class="nav-glyph">╱╲</span><span>Monitors</span></a>
+      <a class="nav-item" href="#logsPanel"><span class="nav-glyph">◌</span><span>Anomaly Logs</span></a>
+      <a class="nav-item" href="#userPanel"><span class="nav-glyph">⌁</span><span>User Tracing</span></a>
+      <a class="nav-item" href="#llmPanel"><span class="nav-glyph">⚙</span><span>AI Engine</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="scope-card">
+        <div class="scope-label">Snapshot Scope</div>
+        <div class="scope-note" id="sidebarScopeNote">prod / beta / logs / llm</div>
+        <div class="scope-bars">
+          <span class="scope-bar on"></span>
+          <span class="scope-bar on"></span>
+          <span class="scope-bar on"></span>
+          <span class="scope-bar"></span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <div class="canvas">
+      <div class="canvas-note" id="headerSummary">prod / beta 운영 상태와 즉시 확인할 이슈를 한 화면에서 보여줍니다.</div>
+
+      <section class="kpi-grid" id="kpiRow" aria-label="핵심 지표"></section>
+
+      <section class="module">
+        <div class="module-head">
+          <div>
+            <div class="module-title-wrap">
+              <span class="module-icon tone-err"></span>
+              <div>
+                <div class="module-label">Alert Digest</div>
+                <div class="module-title">알림 요약 (Alert Digest)</div>
+              </div>
+            </div>
+            <div class="section-copy">가장 긴급한 항목을 위로 올리고, 다음 확인 행동을 함께 적습니다.</div>
+          </div>
+          <div class="section-note" id="alertDigestMeta"></div>
+        </div>
+        <div class="digest-list" id="alertDigest"></div>
+      </section>
+
+      <section class="module" id="actionPanelSection">
+        <div class="module-head">
+          <div>
+            <div class="module-title-wrap">
+              <span class="module-icon tone-info"></span>
+              <div>
+                <div class="module-label">Admin Actions</div>
+                <div class="module-title">운영 실행 (Admin Actions)</div>
+              </div>
+            </div>
+            <div class="section-copy">전체 점검과 사용자별 점검/새로고침/누락 요약 채우기를 여기서 실행합니다.</div>
+          </div>
+          <div class="section-note" id="actionPanelMeta">실행 기록 불러오는 중</div>
+        </div>
+        <div id="actionPanel"></div>
+      </section>
+
+      <section class="module">
+        <div class="module-head">
+          <div>
+            <div class="module-title-wrap">
+              <span class="module-icon tone-info"></span>
+              <div>
+                <div class="module-label">Environment Comparison</div>
+                <div class="module-title">환경 비교 (Environment Comparison)</div>
+              </div>
+            </div>
+            <div class="section-copy">prod는 항상 왼쪽, beta는 항상 오른쪽에서 고정 비교합니다.</div>
+          </div>
+        </div>
+        <div class="env-grid" id="environmentPanels"></div>
+      </section>
+
+      <div class="bento-grid">
+        <section class="module">
+          <div class="module-head">
+            <div>
+              <div class="module-title-wrap">
+                <span class="module-icon tone-info"></span>
+                <div>
+                  <div class="module-label">Services / Processes</div>
+                  <div class="module-title">실행 중 작업 (Services / Processes)</div>
+                </div>
+              </div>
+              <div class="section-copy">실제 프로세스와 health surface를 함께 읽는 운영 카드입니다.</div>
+            </div>
+          </div>
+          <div id="servicesPanel"></div>
+        </section>
+
+        <section class="module">
+          <div class="module-head">
+            <div>
+              <div class="module-title-wrap">
+                <span class="module-icon tone-warn"></span>
+                <div>
+                  <div class="module-label">AI Summary Engine</div>
+                  <div class="module-title">AI 요약 엔진 (AI Summary Engine)</div>
+                </div>
+              </div>
+              <div class="section-copy">모델, endpoint, warnings를 더 단단한 밀도로 압축합니다.</div>
+            </div>
+          </div>
+          <div id="llmPanel"></div>
+        </section>
+
+        <section class="module">
+          <div class="module-head">
+            <div>
+              <div class="module-title-wrap">
+                <span class="module-icon tone-ok"></span>
+                <div>
+                  <div class="module-label">User Status</div>
+                  <div class="module-title">사용자 상태 (User Status)</div>
+                </div>
+              </div>
+              <div class="section-copy">chat_id 중심으로 실제 사용자 이슈를 빠르게 추적합니다.</div>
+            </div>
+          </div>
+          <div id="userPanel"></div>
+        </section>
+      </div>
+
+      <section class="module">
+        <div class="module-head">
+          <div>
+            <div class="module-title-wrap">
+              <span class="module-icon tone-err"></span>
+              <div>
+                <div class="module-label">Logs</div>
+                <div class="module-title">로그 (Logs)</div>
+              </div>
+            </div>
+            <div class="section-copy">요약을 먼저 보고, 최근 경고/오류 라인을 확인한 뒤 raw tail을 펼칩니다.</div>
+          </div>
+        </div>
+        <div id="logsPanel"></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="pulse-indicator"></div>
+
+  <script>
+    const REFRESH_MS = __REFRESH_MS__;
+
+    function esc(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function text(value, fallback = "-") {
+      if (value == null || value === "") return fallback;
+      return String(value);
+    }
+
+    function parseTime(value) {
+      const numeric = new Date(value || "").getTime();
+      return Number.isFinite(numeric) ? numeric : null;
+    }
+
+    function fmtDate(value) {
+      const time = parseTime(value);
+      if (time == null) return text(value);
+      try {
+        return new Intl.DateTimeFormat("ko-KR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).format(new Date(time));
+      } catch {
+        return text(value);
+      }
+    }
+
+    function fmtRelative(value) {
+      const time = parseTime(value);
+      if (time == null) return "기록 없음";
+      const diff = Date.now() - time;
+      const absSec = Math.round(Math.abs(diff) / 1000);
+      if (absSec < 60) return "방금";
+      const units = [
+        [86400, "일"],
+        [3600, "시간"],
+        [60, "분"],
+      ];
+      for (const [unit, label] of units) {
+        if (absSec >= unit) {
+          const amount = Math.floor(absSec / unit);
+          return diff >= 0 ? `${amount}${label} 전` : `${amount}${label} 후`;
+        }
+      }
+      return "방금";
+    }
+
+    function formatNumber(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return text(value);
+      if (Math.abs(numeric) >= 10 || Number.isInteger(numeric)) return String(Math.round(numeric));
+      return numeric.toFixed(1).replace(/\\.0$/, "");
+    }
+
+    function truncate(value, max = 180) {
+      const raw = String(value || "");
+      if (raw.length <= max) return raw;
+      return `${raw.slice(0, max - 1)}…`;
+    }
+
+    function statusText(value) {
+      const labels = {
+        ready: "정상",
+        success: "성공",
+        ok: "정상",
+        active: "활성",
+        degraded: "주의",
+        warning: "경고",
+        warn: "경고",
+        error: "오류",
+        failed: "실패",
+        partial: "부분",
+        disabled: "비활성",
+        unknown: "미확인",
+        check: "확인 필요",
+        stale: "지연",
+        skipped: "건너뜀",
+        info: "정보",
+      };
+      const lower = String(value || "").toLowerCase();
+      return labels[lower] || text(value);
+    }
+
+    function statusTone(value) {
+      const lower = String(value || "").toLowerCase();
+      if (["ready", "success", "ok", "active"].includes(lower)) return "ok";
+      if (["error", "failed"].includes(lower)) return "err";
+      if (["degraded", "warning", "warn", "partial", "unknown", "check", "stale"].includes(lower)) return "warn";
+      return "info";
+    }
+
+    function toneClass(tone) {
+      return `tone-${tone || "info"}`;
+    }
+
+    function badge(tone, label) {
+      return `<span class="badge ${toneClass(tone)}">${esc(label)}</span>`;
+    }
+
+    function baseName(value) {
+      const parts = String(value || "").split("/");
+      return parts[parts.length - 1] || String(value || "");
+    }
+
+    function normalizeStatusItems(value) {
+      return Array.isArray(value) ? value : [];
+    }
+
+    function orderedInstancesForComparison(payload) {
+      const instances = Array.isArray(payload && payload.instances) ? payload.instances : [];
+      const byLabel = {};
+      for (const instance of instances) {
+        byLabel[String(instance && instance.label || "").toLowerCase()] = instance;
+      }
+      return [
+        { slot: "prod", instance: byLabel.prod || null },
+        { slot: "beta", instance: byLabel.beta || null },
+      ];
+    }
+
+    function allInstances(payload) {
+      return Array.isArray(payload && payload.instances) ? payload.instances : [];
+    }
+
+    function allUsers(payload) {
+      const users = [];
+      for (const instance of allInstances(payload)) {
+        for (const user of normalizeStatusItems(instance && instance.users)) {
+          users.push({ ...user, instance_label: String(instance && instance.label || "-") });
+        }
+      }
+      return users;
+    }
+
+    function environmentLabel(slot) {
+      if (slot === "prod") return "prod";
+      if (slot === "beta") return "beta";
+      return text(slot);
+    }
+
+    function environmentKorean(slot) {
+      if (slot === "prod") return "운영 환경";
+      if (slot === "beta") return "beta 환경";
+      return "환경";
+    }
+
+    function surfaceLabel(key) {
+      const labels = {
+        uos_official_api: "서울시립대 공식 API",
+        uclass_sync: "UClass 동기화",
+        telegram_listener: "텔레그램 수신",
+        telegram_send: "텔레그램 발송",
+        weather_sync: "날씨 동기화",
+        notice_fetch: "공지 수집",
+      };
+      return labels[String(key || "")] || text(key);
+    }
+
+    function connectionKindLabel(value) {
+      const labels = {
+        moodle_connection: "Moodle 연결",
+        browser_session: "브라우저 세션",
+      };
+      return labels[String(value || "")] || text(value);
+    }
+
+    function healthSurfaceIssues(entity) {
+      return Object.entries(entity && entity.health && entity.health.surfaces || {})
+        .filter(([, item]) => item && ["warn", "err"].includes(statusTone(item.status)));
+    }
+
+    function syncIssues(entity) {
+      return normalizeStatusItems(entity && entity.sync_dashboard && entity.sync_dashboard.sources)
+        .filter((item) => {
+          const tone = statusTone(item && item.status);
+          return ["warn", "err"].includes(tone) || Number(item && item.action_required || 0) > 0 || !!(item && item.last_error);
+        });
+    }
+
+    function totalActiveUsers(instances) {
+      return instances.reduce((sum, instance) => sum + normalizeStatusItems(instance && instance.users).length, 0);
+    }
+
+    function latestInstanceSync(instances) {
+      let latest = null;
+      let latestValue = null;
+      for (const instance of instances) {
+        const value = instance && instance.sync_dashboard && instance.sync_dashboard.last_successful_sync_at;
+        const time = parseTime(value);
+        if (time != null && (latest == null || time > latest)) {
+          latest = time;
+          latestValue = value;
+        }
+      }
+      return latestValue;
+    }
+
+    function processKindLabel(item) {
+      return text(item && (item.kind_label || item.kind), "미분류");
+    }
+
+    function processKinds(instance) {
+      return Array.from(new Set(normalizeStatusItems(instance && instance.processes).map((item) => processKindLabel(item)).filter(Boolean)));
+    }
+
+    function summarizeLogs(payload) {
+      const files = normalizeStatusItems(payload && payload.logs && payload.logs.files);
+      return files.reduce((acc, item) => {
+        acc.files += 1;
+        acc.errors += Number(item && item.error_count || 0);
+        acc.warnings += Number(item && item.warning_count || 0);
+        const time = parseTime(item && item.mtime);
+        if (time != null && (acc.latestTime == null || time > acc.latestTime)) {
+          acc.latestTime = time;
+          acc.latest = item.mtime;
+        }
+        return acc;
+      }, { files: 0, errors: 0, warnings: 0, latest: null, latestTime: null });
+    }
+
+    function collectLogAlertLines(files, limit = 8) {
+      const matches = [];
+      for (const file of files) {
+        const tail = normalizeStatusItems(file && file.tail);
+        for (let index = tail.length - 1; index >= 0; index -= 1) {
+          const line = String(tail[index] || "");
+          const lowered = line.toLowerCase();
+          if (!/(error|warning|warn|failed)/.test(lowered)) continue;
+          matches.push({
+            path: String(file && file.path || ""),
+            line,
+            tone: lowered.includes("error") || lowered.includes("failed") ? "err" : "warn",
+            mtime: file && file.mtime,
+          });
+          if (matches.length >= limit) return matches;
+        }
+      }
+      return matches;
+    }
+
+    function renderActionButton(label, request, variant = "", disabled = false) {
+      const attrs = [
+        'type="button"',
+        `class="action-button${variant ? ` ${variant}` : ""}"`,
+        'data-action-trigger="1"',
+        `data-action="${esc(request && request.action)}"`,
+        request && request.instance_label ? `data-instance-label="${esc(request.instance_label)}"` : "",
+        request && request.chat_id ? `data-chat-id="${esc(request.chat_id)}"` : "",
+        request && request.user_id != null ? `data-user-id="${esc(String(request.user_id))}"` : "",
+        disabled ? "disabled" : "",
+      ].filter(Boolean).join(" ");
+      return `<button ${attrs}>${esc(label)}</button>`;
+    }
+
+    function normalizeActionsPayload(payload) {
+      return payload && Array.isArray(payload.actions) ? payload.actions : [];
+    }
+
+    function actionLabel(value) {
+      const labels = {
+        global_audit: "전체 일괄 점검",
+        user_audit: "사용자 점검",
+        user_refresh: "사용자 새로고침",
+        repair_missing_material_briefs: "누락 요약 채우기",
+      };
+      return labels[String(value || "")] || text(value, "action");
+    }
+
+    function actionScopeLabel(request) {
+      if (!request) return "scope 미확인";
+      const parts = [];
+      if (request.instance_label) parts.push(String(request.instance_label).toUpperCase());
+      if (request.chat_id) parts.push(`chat_id ${request.chat_id}`);
+      else if (request.user_id != null) parts.push(`user ${request.user_id}`);
+      return parts.join(" · ") || "전체 범위";
+    }
+
+    function actionStatusText(status) {
+      const labels = {
+        queued: "대기",
+        running: "실행 중",
+        completed: "완료",
+        failed: "실패",
+      };
+      return labels[String(status || "")] || text(status, "미확인");
+    }
+
+    function sameActionScope(item, request) {
+      const current = item && item.request ? item.request : {};
+      return String(current.action || "") === String(request && request.action || "")
+        && String(current.instance_label || "") === String(request && request.instance_label || "")
+        && String(current.chat_id || "") === String(request && request.chat_id || "")
+        && String(current.user_id ?? "") === String(request && request.user_id ?? "");
+    }
+
+    function sameUserScope(item, request) {
+      const current = item && item.request ? item.request : {};
+      return String(current.instance_label || "") === String(request && request.instance_label || "")
+        && String(current.chat_id || "") === String(request && request.chat_id || "")
+        && String(current.user_id ?? "") === String(request && request.user_id ?? "");
+    }
+
+    function isActionRunning(actionPayload, request) {
+      return normalizeActionsPayload(actionPayload).some((item) => {
+        const status = String(item && item.status || "");
+        return ["queued", "running"].includes(status) && sameActionScope(item, request);
+      });
+    }
+
+    function isScopeBusy(actionPayload, request) {
+      return normalizeActionsPayload(actionPayload).some((item) => {
+        const status = String(item && item.status || "");
+        return ["queued", "running"].includes(status) && sameUserScope(item, request);
+      });
+    }
+
+    function actionTone(item) {
+      const status = String(item && item.status || "");
+      const request = item && item.request ? item.request : {};
+      const result = item && item.result ? item.result : {};
+      if (status === "failed") return "err";
+      if (status === "queued" || status === "running") return "info";
+      if (request.action === "global_audit" || request.action === "user_audit") {
+        return result && result.ready ? "ok" : "warn";
+      }
+      if (request.action === "user_refresh") {
+        if (result && result.ok === false) return "err";
+        return normalizeStatusItems(result && result.error_components).length ? "warn" : "ok";
+      }
+      if (request.action === "repair_missing_material_briefs") {
+        if (Number(result && result.failed || 0) > 0) return "warn";
+        return Number(result && result.generated || 0) > 0 ? "ok" : "info";
+      }
+      return "info";
+    }
+
+    function actionResultSummary(item) {
+      const status = String(item && item.status || "");
+      const request = item && item.request ? item.request : {};
+      const result = item && item.result ? item.result : {};
+      if (status === "failed") return text(item && item.error, "실행 실패");
+      if (status === "queued") return "백그라운드 큐에 등록됨";
+      if (status === "running") return "백그라운드에서 실행 중";
+      if (request.action === "global_audit") {
+        const totals = result && result.totals ? result.totals : {};
+        return `환경 ${Number(totals.environments || 0)} · 사용자 ${Number(totals.active_users || 0)} · 이상 사용자 ${Number(totals.users_with_findings || 0)} · 누락 요약 ${Number(totals.missing_briefs || 0)}건`;
+      }
+      if (request.action === "user_audit") {
+        return result && result.ready
+          ? "즉시 조치 항목 없음"
+          : `findings ${normalizeStatusItems(result && result.findings).length}건 · 누락 요약 ${Number(result && result.material_brief_summary && result.material_brief_summary.missing_count || 0)}건`;
+      }
+      if (request.action === "user_refresh") {
+        const errors = normalizeStatusItems(result && result.error_components);
+        return errors.length
+          ? `실패 컴포넌트 ${errors.join(", ")}`
+          : `새로고침 완료 · skipped ${normalizeStatusItems(result && result.skipped_components).length}개`;
+      }
+      if (request.action === "repair_missing_material_briefs") {
+        return `생성 ${Number(result && result.generated || 0)}건 · AI ${Number(result && result.generated_llm || 0)} · heuristic ${Number(result && result.generated_heuristic || 0)}`;
+      }
+      return "실행 결과 기록 없음";
+    }
+
+    function actionDetailLines(item) {
+      const request = item && item.request ? item.request : {};
+      const result = item && item.result ? item.result : {};
+      if (String(item && item.status || "") === "failed") {
+        return [text(item && item.error, "실행 실패")];
+      }
+      if (request.action === "global_audit") {
+        const lines = [];
+        for (const env of normalizeStatusItems(result && result.environments)) {
+          if (env && env.load_error) {
+            lines.push(`${String(env.label || "").toUpperCase()} 로드 실패 · ${truncate(env.load_error, 120)}`);
+            continue;
+          }
+          lines.push(
+            `${String(env && env.label || "").toUpperCase()} · 이상 사용자 ${Number(env && env.users_with_findings || 0)}명 · 누락 요약 ${Number(env && env.missing_briefs || 0)}건`
+          );
+          for (const user of normalizeStatusItems(env && env.top_users).slice(0, 2)) {
+            lines.push(`chat_id ${text(user && user.chat_id)} · ${normalizeStatusItems(user && user.findings).join(" · ")}`);
+          }
+        }
+        return lines.slice(0, 8);
+      }
+      if (request.action === "user_audit") {
+        const findings = normalizeStatusItems(result && result.findings);
+        if (findings.length) return findings;
+        return ["즉시 조치 항목이 없습니다."];
+      }
+      if (request.action === "user_refresh") {
+        const components = result && result.components && typeof result.components === "object"
+          ? Object.entries(result.components)
+          : [];
+        return components.map(([name, value]) => {
+          const payload = value && typeof value === "object" ? value : {};
+          return `${name} · ${payload && payload.ok === false ? "오류" : payload && payload.skipped ? "건너뜀" : "완료"}${payload && payload.error ? ` · ${truncate(payload.error, 100)}` : ""}`;
+        }).slice(0, 8);
+      }
+      if (request.action === "repair_missing_material_briefs") {
+        const items = normalizeStatusItems(result && result.items);
+        if (items.length) {
+          return items.map((entry) => `${text(entry && entry.filename)} · ${text(entry && entry.mode, "unknown")}`).slice(0, 8);
+        }
+        return [
+          `기존 요약 ${Number(result && result.skipped_existing || 0)}건`,
+          `파일 없음 ${Number(result && result.skipped_missing_file || 0)}건`,
+          `텍스트 없음 ${Number(result && result.skipped_no_text || 0)}건`,
+        ];
+      }
+      return [];
+    }
+
+    function bindActionButtons(root) {
+      if (!root) return;
+      root.querySelectorAll("[data-action-trigger='1']").forEach((button) => {
+        if (button.dataset.bound === "1") return;
+        button.dataset.bound = "1";
+        button.addEventListener("click", async () => {
+          if (button.disabled) return;
+          const userId = button.dataset.userId;
+          await runDashboardAction({
+            action: button.dataset.action,
+            instance_label: button.dataset.instanceLabel || null,
+            chat_id: button.dataset.chatId || null,
+            user_id: userId ? Number(userId) : null,
+          });
+        });
+      });
+    }
+
+    async function runDashboardAction(request) {
+      try {
+        const response = await fetch("/api/actions/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request),
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload && payload.error ? payload.error : `action failed: ${response.status}`);
+        }
+        await fetchOpsData();
+      } catch (error) {
+        const meta = document.getElementById("actionPanelMeta");
+        if (meta) meta.textContent = `실행 요청 실패: ${text(error && error.message, "unknown error")}`;
+      }
+    }
+
+    function representativeFailedStage(instance) {
+      const users = [...normalizeStatusItems(instance && instance.users)];
+      users.sort((left, right) => {
+        const leftScore = (left && left.last_failed_stage ? 100 : 0) + Number(left && left.sync_dashboard && left.sync_dashboard.action_required_count || 0);
+        const rightScore = (right && right.last_failed_stage ? 100 : 0) + Number(right && right.sync_dashboard && right.sync_dashboard.action_required_count || 0);
+        if (rightScore !== leftScore) return rightScore - leftScore;
+        return String(left && left.chat_id || "").localeCompare(String(right && right.chat_id || ""));
+      });
+      return users.find((item) => item && item.last_failed_stage && item.last_failed_stage.message) || null;
+    }
+
+    function userAttentionScore(user) {
+      return (
+        Number(user && user.sync_dashboard && user.sync_dashboard.action_required_count || 0) * 10 +
+        Number(user && user.health_summary && user.health_summary.not_ready_count || 0) * 4 +
+        (user && user.last_failed_stage ? 12 : 0)
+      );
+    }
+
+    function topAttentionUsers(instance, limit = 3) {
+      const users = [...normalizeStatusItems(instance && instance.users)].filter((user) => userAttentionScore(user) > 0);
+      users.sort((left, right) => {
+        const gap = userAttentionScore(right) - userAttentionScore(left);
+        if (gap !== 0) return gap;
+        return String(left && left.chat_id || "").localeCompare(String(right && right.chat_id || ""));
+      });
+      return users.slice(0, limit);
+    }
+
+    function summarizeUserAttention(user) {
+      const parts = [];
+      const failedStage = user && user.last_failed_stage ? user.last_failed_stage : null;
+      const actions = Number(user && user.sync_dashboard && user.sync_dashboard.action_required_count || 0);
+      const surfaces = healthSurfaceIssues(user);
+      if (failedStage) parts.push(`${text(failedStage.stage)} ${statusText(failedStage.status)}`);
+      if (actions > 0) parts.push(`직접 확인 ${actions}건`);
+      if (surfaces.length) parts.push(`${surfaceLabel(surfaces[0][0])} ${statusText(surfaces[0][1] && surfaces[0][1].status)}`);
+      if (user && user.next_task && user.next_task.title) {
+        parts.push(`다음 과제 ${truncate(user.next_task.title, 28)}`);
+      } else if (user && user.next_event && user.next_event.title) {
+        parts.push(`다음 일정 ${truncate(user.next_event.title, 28)}`);
+      }
+      return parts.slice(0, 3).join(" · ") || "상세 확인 필요";
+    }
+
+    function syncProblemScore(item) {
+      const tone = statusTone(item && item.status);
+      return (tone === "err" ? 40 : tone === "warn" ? 20 : 0) + Number(item && item.action_required || 0) * 6 + (item && item.last_error ? 4 : 0);
+    }
+
+    function topSyncProblems(instance, limit = 3) {
+      const items = [...syncIssues(instance)];
+      items.sort((left, right) => {
+        const gap = syncProblemScore(right) - syncProblemScore(left);
+        if (gap !== 0) return gap;
+        return text(left && (left.label || left.key)).localeCompare(text(right && (right.label || right.key)));
+      });
+      return items.slice(0, limit);
+    }
+
+    function surfaceIssueScore(entry) {
+      const item = entry && entry[1];
+      const tone = statusTone(item && item.status);
+      return tone === "err" ? 30 : tone === "warn" ? 18 : 0;
+    }
+
+    function topSurfaceIssues(instance, limit = 3) {
+      const items = [...healthSurfaceIssues(instance)];
+      items.sort((left, right) => {
+        const gap = surfaceIssueScore(right) - surfaceIssueScore(left);
+        if (gap !== 0) return gap;
+        return surfaceLabel(left && left[0]).localeCompare(surfaceLabel(right && right[0]));
+      });
+      return items.slice(0, limit);
+    }
+
+    function summarizeHealthReason(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "사유 기록 없음";
+      if (raw === "No active moodle connections and UCLASS_WS_BASE missing") {
+        return "활성 UClass 연결과 공용 설정이 없습니다.";
+      }
+      if (raw === "No active UClass connections for official timetable matching") {
+        return "공식 시간표 비교용 UClass 연결이 없습니다.";
+      }
+      if (raw === "Telegram listener has not updated recently") {
+        return "텔레그램 리스너 갱신이 최근 없습니다.";
+      }
+      if (raw === "Telegram send path has not been exercised recently") {
+        return "텔레그램 발송 경로가 최근 실행되지 않았습니다.";
+      }
+      if (raw === "Weather snapshot is older than the freshness window") {
+        return "날씨 데이터가 신선도 기준을 넘겼습니다.";
+      }
+      return raw;
+    }
+
+    function summarizeSyncIssue(item) {
+      const label = text(item && (item.label || item.key), "sync");
+      const actionRequired = Number(item && item.action_required || 0);
+      const parts = [`${label} ${statusText(item && item.status)}`];
+      if (actionRequired > 0) parts.push(`직접 확인 ${actionRequired}건`);
+      if (item && item.last_error) parts.push(truncate(item.last_error, 90));
+      return parts.join(" · ");
+    }
+
+    function userHealthSummary(user) {
+      const healthSummary = user && user.health_summary ? user.health_summary : {};
+      return `정상 ${Number(healthSummary.ready_count || 0)} · 점검 ${Number(healthSummary.not_ready_count || 0)}`;
+    }
+
+    function instanceHealthSummary(instance) {
+      const summary = instance && instance.health_summary ? instance.health_summary : {};
+      return `정상 ${Number(summary.ready_count || 0)} · 점검 ${Number(summary.not_ready_count || 0)}`;
+    }
+
+    function overallStatus(payload) {
+      const headline = payload && payload.headline && typeof payload.headline === "object"
+        ? payload.headline
+        : null;
+      if (headline && headline.tone) {
+        return {
+          tone: headline.tone,
+          label: headline.label || (headline.tone === "err" ? "오류" : headline.tone === "warn" ? "주의" : "정상"),
+          reason: headline.reason || (headline.tone === "err" ? "실제 장애 신호 있음" : headline.tone === "warn" ? "수동 확인 항목 있음" : "즉시 조치 항목 없음"),
+        };
+      }
+      const alerts = collectAlertDigestItems(payload);
+      if (alerts.some((item) => item.tone === "err")) return { tone: "err", label: "오류", reason: "즉시 확인 항목 있음" };
+      if (alerts.some((item) => item.tone === "warn")) return { tone: "warn", label: "주의", reason: "확인 필요 항목 있음" };
+      return { tone: "ok", label: "정상", reason: "즉시 조치 항목 없음" };
+    }
+
+    function attentionStats(payload) {
+      const instances = allInstances(payload);
+      const loadErrors = instances.filter((instance) => instance && instance.load_error).length;
+      const actionRequired = instances.reduce((sum, instance) => sum + Number(instance && instance.sync_dashboard && instance.sync_dashboard.action_required_count || 0), 0);
+      const healthIssues = instances.reduce((sum, instance) => sum + healthSurfaceIssues(instance).length, 0);
+      const syncIssueCount = instances.reduce((sum, instance) => sum + syncIssues(instance).length, 0);
+      const llmWarnings = normalizeStatusItems(payload && payload.llm && payload.llm.recent_warnings).length;
+      const logSummary = summarizeLogs(payload);
+      return {
+        loadErrors,
+        actionRequired,
+        healthIssues,
+        syncIssueCount,
+        llmWarnings,
+        logSignals: logSummary.errors + logSummary.warnings,
+        total: loadErrors + actionRequired + healthIssues + syncIssueCount + llmWarnings + logSummary.errors + logSummary.warnings,
+      };
+    }
+
+    function recommendedNextAction(instance) {
+      if (!instance) return "환경이 비어 있습니다.";
+      if (instance.load_error) return "설정 파일과 DB 경로부터 다시 확인";
+      const failedStageUser = representativeFailedStage(instance);
+      const surfaces = topSurfaceIssues(instance);
+      const sourceProblems = topSyncProblems(instance);
+      const actions = Number(instance && instance.sync_dashboard && instance.sync_dashboard.action_required_count || 0);
+      if (surfaces.length) return `${surfaceLabel(surfaces[0][0])} 상태와 관련 로그 확인`;
+      if (sourceProblems.length) return `${text(sourceProblems[0] && (sourceProblems[0].label || sourceProblems[0].key), "동기화")} 최근 실패 원인 확인`;
+      if (failedStageUser && failedStageUser.last_failed_stage) return `사용자 ${text(failedStageUser.chat_id)} 실패 단계 재현`;
+      if (actions > 0) return "직접 확인 항목을 우선 정리";
+      if (!processKinds(instance).length) return "해당 환경 프로세스 기동 여부 확인";
+      return "즉시 조치보다 로그 추세 점검";
+    }
+
+    function collectAlertDigestItems(payload) {
+      const items = [];
+      const instances = allInstances(payload);
+      const files = normalizeStatusItems(payload && payload.logs && payload.logs.files);
+      for (const instance of instances) {
+        const label = text(instance && instance.label, "env");
+        const labelUpper = label.toUpperCase();
+        const attentionUsers = topAttentionUsers(instance, 999);
+        const topUsers = attentionUsers.slice(0, 3);
+        const syncProblems = topSyncProblems(instance, 3);
+        const surfaces = topSurfaceIssues(instance, 3);
+        const actions = Number(instance && instance.sync_dashboard && instance.sync_dashboard.action_required_count || 0);
+        const latestSync = instance && instance.sync_dashboard && instance.sync_dashboard.last_successful_sync_at;
+        if (instance && instance.load_error) {
+          items.push({
+            tone: "err",
+            severity: 120,
+            title: `${labelUpper} 환경 로드 실패`,
+            summary: `${labelUpper} 인스턴스 설정을 읽는 단계에서 오류가 발생했습니다.`,
+            impact: "환경 상태를 정확히 계산할 수 없습니다.",
+            evidence: [
+              truncate(instance.load_error, 180),
+              `config ${text(instance && instance.config_file, "미확인")}`,
+            ],
+            recommendation: "config 파일, .env, DATABASE_PATH부터 우선 확인하세요.",
+            context: [labelUpper, "환경 로드", "설정"],
+            anchor: "#environmentPanels",
+            anchorLabel: `${labelUpper} 환경 카드`,
+          });
+        }
+        if (actions > 0 || syncProblems.length) {
+          const topSource = syncProblems[0];
+          const sourceLabel = text(topSource && (topSource.label || topSource.key), "동기화");
+          const syncEvidence = [];
+          for (const item of syncProblems.slice(0, 2)) {
+            syncEvidence.push(`${text(item && (item.label || item.key), "동기화")} · ${summarizeSyncIssue(item)}`);
+          }
+          for (const user of topUsers.slice(0, 2)) {
+            syncEvidence.push(`chat_id ${text(user && user.chat_id)} · ${summarizeUserAttention(user)}`);
+          }
+          items.push({
+            tone: topSource && statusTone(topSource && topSource.status) === "err" ? "err" : "warn",
+            severity: 88 + Math.min(actions, 8) + (topSource && statusTone(topSource && topSource.status) === "err" ? 14 : 0),
+            title: `${labelUpper} ${sourceLabel} 직접 확인 필요`,
+            summary: `${labelUpper}에서 자동 처리되지 않은 동기화 항목이 남아 있습니다.`,
+            impact: `직접 확인 ${actions}건 · 영향 사용자 ${attentionUsers.length}명${latestSync ? ` · 마지막 성공 ${fmtRelative(latestSync)}` : ""}`,
+            evidence: syncEvidence,
+            recommendation: topUsers.length
+              ? `chat_id ${text(topUsers[0] && topUsers[0].chat_id)} 사용자 카드부터 열어 실패 단계와 연결 상태를 확인하세요.`
+              : `${sourceLabel} source와 최근 sync 로그를 먼저 확인하세요.`,
+            context: [labelUpper, sourceLabel, "동기화"],
+            anchor: topUsers.length ? "#userPanel" : "#environmentPanels",
+            anchorLabel: topUsers.length ? "사용자 카드 보기" : `${labelUpper} 환경 카드`,
+          });
+        }
+        if (surfaces.length) {
+          const primarySurface = surfaces[0];
+          const summary = instance && instance.health_summary ? instance.health_summary : {};
+          items.push({
+            tone: statusTone(primarySurface[1] && primarySurface[1].status),
+            severity: statusTone(primarySurface[1] && primarySurface[1].status) === "err" ? 94 : 80,
+            title: `${labelUpper} ${surfaceLabel(primarySurface[0])} 이상`,
+            summary: `${labelUpper} health surface에서 즉시 확인이 필요한 상태가 감지되었습니다.`,
+            impact: `점검 surface ${surfaces.length}개 · 정상 ${Number(summary.ready_count || 0)} · 점검 ${Number(summary.not_ready_count || 0)}`,
+            evidence: surfaces.map(([key, item]) => `${surfaceLabel(key)} · ${summarizeHealthReason(item && item.reason)}`),
+            recommendation: `${surfaceLabel(primarySurface[0])} 관련 프로세스와 외부 연동 상태를 확인하세요.`,
+            context: [labelUpper, "헬스 이상", "연동"],
+            anchor: "#environmentPanels",
+            anchorLabel: `${labelUpper} 환경 카드`,
+          });
+        }
+      }
+      const llm = payload && payload.llm ? payload.llm : {};
+      const llmWarnings = normalizeStatusItems(llm && llm.recent_warnings);
+      const endpoints = normalizeStatusItems(llm && llm.endpoints);
+      const failingEndpoints = endpoints
+        .filter((item) => !(item && item.http_ok) || !!(item && item.error))
+        .sort((left, right) => {
+          const leftBad = left && left.error ? 1 : 0;
+          const rightBad = right && right.error ? 1 : 0;
+          if (rightBad !== leftBad) return rightBad - leftBad;
+          return Number(right && right.response_ms || 0) - Number(left && left.response_ms || 0);
+        });
+      if (["warn", "err"].includes(statusTone(llm && llm.status)) || llmWarnings.length || failingEndpoints.length) {
+        const primaryEndpoint = failingEndpoints[0];
+        const llmEvidence = [];
+        for (const endpoint of failingEndpoints.slice(0, 2)) {
+          llmEvidence.push(
+            `${baseName(text(endpoint && endpoint.base_url, "endpoint")) || text(endpoint && endpoint.base_url, "endpoint")} · ${endpoint && endpoint.http_ok ? "응답 지연" : "응답 실패"}${endpoint && endpoint.error ? ` · ${truncate(endpoint.error, 90)}` : ""}`
+          );
+        }
+        for (const warning of llmWarnings.slice(0, 2)) {
+          llmEvidence.push(truncate(warning, 140));
+        }
+        items.push({
+          tone: statusTone(llm && llm.status) === "err" || failingEndpoints.length ? "err" : "warn",
+          severity: statusTone(llm && llm.status) === "err" || failingEndpoints.length ? 90 : 74,
+          title: "AI 요약 엔진 확인 필요",
+          summary: primaryEndpoint
+            ? "AI Summary Engine endpoint 응답 문제가 감지되었습니다."
+            : "AI Summary Engine 경고가 누적되고 있습니다.",
+          impact: `상태 ${statusText(llm && llm.status)} · 실패 endpoint ${failingEndpoints.length}개 · 최근 경고 ${llmWarnings.length}건`,
+          evidence: llmEvidence,
+          recommendation: primaryEndpoint
+            ? `${baseName(text(primaryEndpoint && primaryEndpoint.base_url, "endpoint")) || "LLM endpoint"}부터 응답과 오류 원문을 확인하세요.`
+            : "최근 경고 원문과 로드 모델 상태를 먼저 확인하세요.",
+          context: ["AI", "엔드포인트", "경고"],
+          anchor: "#llmPanel",
+          anchorLabel: "AI 카드 보기",
+        });
+      }
+      const logSummary = summarizeLogs(payload);
+      if (logSummary.errors || logSummary.warnings) {
+        const highlights = collectLogAlertLines(files, 3);
+        items.push({
+          tone: logSummary.errors ? "err" : "warn",
+          severity: logSummary.errors ? 86 : 68,
+          title: "최근 로그 오류 / 경고 확인 필요",
+          summary: "최근 로그에서 반복되는 경고 또는 오류가 감지되었습니다.",
+          impact: `파일 ${logSummary.files}개 · 오류 ${logSummary.errors}건 · 경고 ${logSummary.warnings}건`,
+          evidence: highlights.map((line) => `${baseName(line.path)} · ${truncate(line.line, 140)}`),
+          recommendation: highlights.length
+            ? `${baseName(highlights[0].path)} raw tail부터 열어 앞뒤 맥락을 확인하세요.`
+            : "Logs 섹션의 raw tail을 먼저 확인하세요.",
+          context: ["로그", logSummary.errors ? "오류" : "경고"],
+          anchor: "#logsPanel",
+          anchorLabel: "로그 보기",
+        });
+      }
+      items.sort((left, right) => right.severity - left.severity || String(left.title).localeCompare(String(right.title)));
+      return items.slice(0, 8);
+    }
+
+    function renderHeaderMeta(payload) {
+      const instances = allInstances(payload);
+      const liveIndicator = document.getElementById("liveIndicator");
+      const headerUpdated = document.getElementById("headerUpdated");
+      const headerHost = document.getElementById("headerHost");
+      const headerUser = document.getElementById("headerUser");
+      const headerStatus = document.getElementById("headerStatus");
+      const headerSummary = document.getElementById("headerSummary");
+      const sidebarScopeNote = document.getElementById("sidebarScopeNote");
+      const overall = overallStatus(payload);
+      liveIndicator.textContent = `Live · ${text(payload && payload.refresh_interval_sec, "-")}s`;
+      headerUpdated.textContent = `Last Updated: ${fmtDate(payload && payload.generated_at)}`;
+      headerHost.textContent = `Host: ${text(payload && payload.host)}`;
+      headerUser.textContent = `Operator: ${text(payload && payload.user)}`;
+      headerStatus.className = `status-badge ${toneClass(overall.tone)}`;
+      headerStatus.textContent = overall.tone === "ok"
+        ? "전체 정상 (Healthy)"
+        : overall.tone === "warn"
+          ? "전체 주의 (Watch)"
+          : "전체 오류 (Error)";
+      headerSummary.textContent =
+        `${instances.length}개 환경 · 활성 사용자 ${totalActiveUsers(instances)}명 · ${overall.reason}`;
+      if (sidebarScopeNote) {
+        sidebarScopeNote.textContent = `env ${instances.length} · logs ${summarizeLogs(payload).files} · llm ${statusText(payload && payload.llm && payload.llm.status)}`;
+      }
+    }
+
+    function renderKpis(payload) {
+      const root = document.getElementById("kpiRow");
+      const instances = allInstances(payload);
+      const llm = payload && payload.llm ? payload.llm : {};
+      const latestSync = latestInstanceSync(instances);
+      const services = payload && payload.services && payload.services.counts ? payload.services.counts : {};
+      const stats = attentionStats(payload);
+      const overall = overallStatus(payload);
+      const readyCount = instances.filter((instance) => instance && instance.health_summary && instance.health_summary.overall_ready).length;
+      const activeUsers = totalActiveUsers(instances);
+      const cards = [
+        {
+          label: "실행 환경 (Environments)",
+          value: String(instances.length),
+          suffix: instances.length ? instances.map((instance) => text(instance && instance.label).toUpperCase()).join(", ") : "-",
+          meta: `정상 ${readyCount} · 점검 ${Math.max(instances.length - readyCount, 0)}`,
+          tone: instances.length ? "info" : "warn",
+        },
+        {
+          label: "점검 필요 (Attention Needed)",
+          value: String(stats.total),
+          suffix: stats.total ? "NEEDS REVIEW" : "CLEAR",
+          meta: `로드 오류 ${stats.loadErrors} · 직접 확인 ${stats.actionRequired} · health ${stats.healthIssues}`,
+          tone: stats.total ? (overall.tone === "err" ? "err" : "warn") : "ok",
+        },
+        {
+          label: "마지막 동기화 (Latest Sync)",
+          value: latestSync ? fmtRelative(latestSync) : "기록 없음",
+          suffix: latestSync ? "SUCCESS" : "NO DATA",
+          meta: latestSync ? fmtDate(latestSync) : "성공한 인스턴스 동기화 없음",
+          tone: latestSync ? "info" : "warn",
+        },
+        {
+          label: "실행 중 작업 (Active Services / Processes)",
+          value: String(Number(services.total || 0)),
+          suffix: "ACTIVE",
+          meta: `Sidae ${Number(services.sidae || 0)} · Ollama ${Number(services.ollama || 0)}`,
+          tone: Number(services.total || 0) > 0 ? "info" : "warn",
+        },
+        {
+          label: "활성 사용자 (Active Users)",
+          value: String(activeUsers),
+          suffix: instances.length
+            ? instances.map((instance) => `${text(instance && instance.label)} ${normalizeStatusItems(instance && instance.users).length}`).join(" · ")
+            : "-",
+          meta: instances.length
+            ? `prod/beta 비교 기준 사용자 합계`
+            : "활성 사용자 없음",
+          tone: activeUsers ? "info" : "warn",
+        },
+        {
+          label: "AI 요약 엔진 (AI Summary Engine)",
+          value: statusText(llm && llm.status),
+          suffix: normalizeStatusItems(llm && llm.recent_warnings).length ? `WARN ${normalizeStatusItems(llm && llm.recent_warnings).length}` : "STABLE",
+          meta: `설정 모델 ${normalizeStatusItems(llm && llm.configured_models).length}개 · 최근 경고 ${normalizeStatusItems(llm && llm.recent_warnings).length}건`,
+          tone: statusTone(llm && llm.status),
+        },
+      ];
+      root.innerHTML = cards.map((card) => `
+        <div class="kpi-card ${toneClass(card.tone)}">
+          <div class="kpi-label">${esc(card.label)}</div>
+          <div class="kpi-main">
+            <div class="kpi-value">${esc(card.value)}</div>
+            <div class="kpi-suffix">${esc(card.suffix)}</div>
+          </div>
+          <div class="kpi-meta">${esc(card.meta)}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderAlertDigest(payload) {
+      const root = document.getElementById("alertDigest");
+      const meta = document.getElementById("alertDigestMeta");
+      const items = collectAlertDigestItems(payload);
+      meta.textContent = items.length ? `상위 ${items.length}건` : "즉시 조치 항목 없음";
+      if (!items.length) {
+        root.innerHTML = `
+          <div class="digest-row ${toneClass("ok")}">
+            <div class="digest-row-head">
+              <div class="digest-title">즉시 조치할 주요 이슈가 없습니다.</div>
+              ${badge("ok", "정상")}
+            </div>
+            <div class="card-meta">health, sync, logs, LLM 기준으로 상단 경고가 비어 있습니다.</div>
+          </div>
+        `;
+        return;
+      }
+      root.innerHTML = items.map((item, index) => `
+        <div class="digest-row ${toneClass(item.tone)}">
+          <div class="digest-row-head">
+            <div>
+              <div class="digest-title">${esc(item.title)}</div>
+              <div class="digest-context-row">
+                ${normalizeStatusItems(item.context).map((label) => badge("info", label)).join("")}
+                ${item.impact ? `
+                  <div class="digest-impact">
+                    <span class="block-label">영향 범위</span>
+                    <span>${esc(item.impact)}</span>
+                  </div>
+                ` : ""}
+              </div>
+            </div> 
+            <div class="badge-row">
+              <span class="rank-circle">${index + 1}</span>
+              ${badge(item.tone, item.tone === "err" ? "긴급" : "확인")}
+            </div>
+          </div>
+          <div class="digest-body">
+            <div class="digest-summary">${esc(item.summary || item.detail || "")}</div>
+            ${normalizeStatusItems(item.evidence).length ? `
+              <div class="digest-evidence">
+                <div class="block-label">근거</div>
+                <div class="digest-evidence-list">
+                  ${normalizeStatusItems(item.evidence).map((line) => `<div class="digest-evidence-item">${esc(line)}</div>`).join("")}
+                </div>
+              </div>
+            ` : ""}
+            <div class="digest-footer">
+              <div class="digest-recommendation">다음 조치: ${esc(item.recommendation)}</div>
+              ${item.anchor ? `<a class="digest-link" href="${esc(item.anchor)}">${esc(item.anchorLabel || "관련 위치로 이동")}</a>` : ""}
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderAdminActions(payload, actionPayload) {
+      const root = document.getElementById("actionPanel");
+      const meta = document.getElementById("actionPanelMeta");
+      const actions = normalizeActionsPayload(actionPayload);
+      const running = Number(actionPayload && actionPayload.running_count || 0);
+      const globalRequest = { action: "global_audit" };
+      const globalRunning = isActionRunning(actionPayload, globalRequest);
+      const llmEnabledInstances = allInstances(payload)
+        .filter((instance) => !!(instance && instance.llm && instance.llm.enabled))
+        .map((instance) => String(instance && instance.label || "").toUpperCase());
+      meta.textContent = running
+        ? `실행 중 ${running}건`
+        : actions.length
+          ? `최근 ${Math.min(actions.length, 8)}건`
+          : "실행 기록 없음";
+      root.innerHTML = `
+        <div class="action-grid">
+          <div class="action-shell">
+            <div class="action-runner">
+              <div class="action-title">전체 일괄 점검</div>
+              <div class="action-summary">모든 환경의 활성 사용자 기준으로 sync 상태, health surface, 실패 단계, 강의자료 요약 준비 여부를 다시 읽습니다.</div>
+              <div class="action-toolbar">
+                <div class="action-button-group">
+                  ${renderActionButton("전체 일괄 점검", globalRequest, "", globalRunning)}
+                </div>
+                ${badge(globalRunning ? "info" : "ok", globalRunning ? "실행 중" : "대기")}
+              </div>
+              <div class="action-note">
+                강의자료 요약 채우기 버튼은 각 인스턴스의 현재 설정을 따릅니다.
+                ${llmEnabledInstances.length
+                  ? ` ${llmEnabledInstances.join(", ")} 환경에서는 LLM/Ollama 경로를 사용할 수 있습니다.`
+                  : " 현재 LLM이 비활성인 환경에서는 heuristic 요약으로 채워집니다."}
+              </div>
+            </div>
+          </div>
+
+          <div class="action-list">
+            ${actions.length ? actions.slice(0, 8).map((item) => `
+              <div class="action-row ${toneClass(actionTone(item))}">
+                <div class="action-toolbar">
+                  <div>
+                    <div class="action-title">${esc(actionLabel(item && item.request && item.request.action))}</div>
+                    <div class="action-meta">${esc(actionScopeLabel(item && item.request))} · ${esc(actionStatusText(item && item.status))}</div>
+                  </div>
+                  <div class="badge-row">
+                    ${badge(actionTone(item), actionStatusText(item && item.status))}
+                    ${item && item.duplicate ? badge("info", "중복 요청") : ""}
+                  </div>
+                </div>
+                <div class="action-summary">${esc(actionResultSummary(item))}</div>
+                <div class="action-meta">
+                  요청 ${esc(item && item.created_at ? fmtDate(item.created_at) : "-")}
+                  ${item && item.finished_at ? ` · 종료 ${esc(fmtDate(item.finished_at))}` : ""}
+                </div>
+                ${actionDetailLines(item).length ? `
+                  <details class="collapse">
+                    <summary>실행 상세 보기</summary>
+                    <div class="collapse-body">
+                      <div class="action-detail-list">
+                        ${actionDetailLines(item).map((line) => `<div class="action-detail-item">${esc(line)}</div>`).join("")}
+                      </div>
+                    </div>
+                  </details>
+                ` : ""}
+              </div>
+            `).join("") : `<div class="empty">아직 실행 기록이 없습니다.</div>`}
+          </div>
+        </div>
+      `;
+      bindActionButtons(root);
+    }
+
+    function renderCluster(label, values, tone = "info", emptyLabel = "없음") {
+      const items = Array.isArray(values) ? values.filter(Boolean) : [];
+      return `
+        <div class="cluster">
+          <div class="cluster-label">${esc(label)}</div>
+          <div class="cluster-list">
+            ${items.length ? items.map((item) => badge(tone, item)).join("") : badge("info", emptyLabel)}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDetailRows(title, rows, emptyText) {
+      const items = Array.isArray(rows) ? rows.filter(Boolean) : [];
+      return `
+        <div class="cluster">
+          <div class="cluster-label">${esc(title)}</div>
+          <div class="detail-list">
+            ${items.length ? items.map((item) => `
+              <div class="list-row">
+                <div class="field-main small">${esc(item.title)}</div>
+                <div class="list-meta">${esc(item.meta)}</div>
+              </div>
+            `).join("") : `<div class="empty">${esc(emptyText)}</div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEnvironmentPanels(payload) {
+      const root = document.getElementById("environmentPanels");
+      const slots = orderedInstancesForComparison(payload);
+      root.innerHTML = slots.map(({ slot, instance }) => {
+        if (!instance) {
+          return `
+            <section class="env-card ${toneClass("info")}">
+              <div class="env-header">
+                <div class="env-title-wrap">
+                  <div class="env-accent"></div>
+                  <div>
+                    <div class="env-title">${esc(`${environmentLabel(slot).toUpperCase()} (${slot === "prod" ? "운영" : "베타"})`)}</div>
+                    <div class="env-state"><span class="signal-dot"></span> 미탐지 (No Instance)</div>
+                  </div>
+                </div>
+                <div class="env-pending">
+                  <div class="env-small-label">Pending Issues</div>
+                  <div class="env-pending-value">-</div>
+                </div>
+              </div>
+              <div class="empty">해당 슬롯에 로드된 환경이 없습니다.</div>
+            </section>
+          `;
+        }
+        const surfaces = healthSurfaceIssues(instance).slice(0, 3).map(([key, item]) => ({
+          title: `${surfaceLabel(key)} · ${statusText(item && item.status)}`,
+          meta: summarizeHealthReason(item && item.reason),
+        }));
+        const syncProblems = syncIssues(instance).slice(0, 3).map((item) => ({
+          title: text(item && (item.label || item.key), "sync"),
+          meta: summarizeSyncIssue(item),
+        }));
+        const failedStageUser = representativeFailedStage(instance);
+        const failedStage = failedStageUser && failedStageUser.last_failed_stage ? failedStageUser.last_failed_stage : null;
+        const latestSync = instance && instance.sync_dashboard && instance.sync_dashboard.last_successful_sync_at;
+        const actionRequired = Number(instance && instance.sync_dashboard && instance.sync_dashboard.action_required_count || 0);
+        const pendingCount = actionRequired + surfaces.length + syncProblems.length + (instance && instance.load_error ? 1 : 0);
+        const tone = instance && instance.load_error
+          ? "err"
+          : actionRequired > 0 || surfaces.length || syncProblems.length || !(instance && instance.health_summary && instance.health_summary.overall_ready)
+            ? "warn"
+            : "ok";
+        const processLabels = processKinds(instance);
+        const stateLabel = tone === "ok" ? "정상 (Optimal)" : tone === "warn" ? "주의 (Degraded)" : "오류 (Error)";
+        return `
+          <section class="env-card ${toneClass(tone)}">
+            <div class="env-header">
+              <div class="env-title-wrap">
+                <div class="env-accent"></div>
+                <div>
+                  <div class="env-title">${esc(`${text(instance && instance.label, environmentLabel(slot)).toUpperCase()} (${slot === "prod" ? "운영" : "베타"})`)}</div>
+                  <div class="env-state"><span class="signal-dot"></span>${esc(stateLabel)}</div>
+                  <div class="env-health-summary">${esc(instanceHealthSummary(instance))}</div>
+                </div>
+              </div>
+              <div class="env-pending">
+                <div class="env-small-label">Pending Issues</div>
+                <div class="env-pending-value">${esc(String(pendingCount))} ${esc(pendingCount ? "(조치 필요)" : "(정상)")}</div>
+              </div>
+            </div>
+
+            <div class="env-metrics">
+              <div class="well">
+                <div class="well-label">Last Sync (최근 동기화)</div>
+                <div class="well-value mono">${esc(latestSync ? fmtDate(latestSync) : "기록 없음")}</div>
+              </div>
+              <div class="well">
+                <div class="well-label">Active Users (활성 사용자)</div>
+                <div class="well-value mono">${esc(String(normalizeStatusItems(instance && instance.users).length))}</div>
+              </div>
+            </div>
+
+            ${instance && instance.load_error ? `
+              <div class="recommendation">${esc(truncate(instance.load_error, 220))}</div>
+            ` : ""}
+
+            <div class="env-section">
+              <div class="env-small-label">Core Services (핵심 서비스)</div>
+              <div class="badge-row">
+                ${processLabels.length ? processLabels.slice(0, 6).map((label) => badge("info", label)).join("") : badge("warn", "실행 중 작업 없음")}
+              </div>
+            </div>
+
+            <div class="env-two-col">
+              <div class="cluster">
+                <div class="env-small-label">Failing Surfaces (실패 지점)</div>
+                <div class="plain-list">
+                  ${surfaces.length ? surfaces.map((item) => `<div class="plain-list-item">${esc(item.title)} · ${esc(item.meta)}</div>`).join("") : `<div class="empty">감지 없음</div>`}
+                </div>
+              </div>
+              <div class="cluster">
+                <div class="env-small-label">Sync Issues (동기화 오류)</div>
+                <div class="plain-list">
+                  ${syncProblems.length ? syncProblems.map((item) => `<div class="plain-list-item">${esc(item.title)} · ${esc(item.meta)}</div>`).join("") : `<div class="empty">이상 없음</div>`}
+                </div>
+              </div>
+            </div>
+
+            <div class="env-footer ${toneClass(failedStage ? "err" : tone)}">
+              <div class="env-footer-cell">
+                <div class="block-label">Last Failed Stage (실패 단계)</div>
+                <div class="footer-value">${esc(failedStage ? `${text(failedStage.stage)} · ${text(failedStage.status)}` : "N/A (최근 실패 없음)")}</div>
+                <div class="field-value">${esc(failedStage ? `chat_id ${text(failedStageUser && failedStageUser.chat_id)} · ${truncate(failedStage.message, 96)}` : "최근 실패 단계가 기록되지 않았습니다.")}</div>
+              </div>
+              <div class="env-footer-cell right">
+                <div class="block-label">Recommended Action</div>
+                <div class="footer-value">${esc(recommendedNextAction(instance))}</div>
+                <div class="field-value">Action Required ${esc(String(actionRequired))} · Health ${esc(instanceHealthSummary(instance))}</div>
+              </div>
+            </div>
+
+            <details class="collapse">
+              <summary>환경 상세 보기</summary>
+              <div class="collapse-body">
+                <div class="detail-list">
+                  <div class="list-row">
+                    <div class="block-label">App Root</div>
+                    <div class="field-value mono">${esc(text(instance && instance.app_root))}</div>
+                  </div>
+                  <div class="list-row">
+                    <div class="block-label">Config File</div>
+                    <div class="field-value mono">${esc(text(instance && instance.config_file))}</div>
+                  </div>
+                  <div class="list-row">
+                    <div class="block-label">Current Health Summary</div>
+                    <div class="field-value">${esc(instanceHealthSummary(instance))}</div>
+                  </div>
+                  <div class="list-row">
+                    <div class="block-label">Action Required Count</div>
+                    <div class="field-value">${esc(String(actionRequired))}</div>
+                  </div>
+                  ${failedStage ? `
+                    <div class="list-row">
+                      <div class="block-label">Failed Stage Raw</div>
+                      <div class="field-value mono">${esc(text(failedStage.message))}</div>
+                    </div>
+                  ` : ""}
+                </div>
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <div class="block-label">Top Failing Surfaces</div>
+                    <div class="plain-list">
+                      ${surfaces.length ? surfaces.map((item) => `<div class="plain-list-item">${esc(item.title)} · ${esc(item.meta)}</div>`).join("") : `<div class="empty">감지 없음</div>`}
+                    </div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="block-label">Top Sync Issues</div>
+                    <div class="plain-list">
+                      ${syncProblems.length ? syncProblems.map((item) => `<div class="plain-list-item">${esc(item.title)} · ${esc(item.meta)}</div>`).join("") : `<div class="empty">이상 없음</div>`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </section>
+        `;
+      }).join("");
+    }
+
+    function describeProcess(item) {
+      const labels = {
+        onboarding: "온보딩 서버",
+        telegram_listener: "텔레그램 리스너",
+        uclass_poller: "UClass 폴러",
+        sync: "동기화 작업",
+        publish: "발행 작업",
+        ops_dashboard: "운영 대시보드",
+        ollama: "Ollama 서버",
+        ollama_runner: "Ollama 러너",
+      };
+      return labels[String(item && item.kind || "")] || processKindLabel(item);
+    }
+
+    function renderServices(payload) {
+      const root = document.getElementById("servicesPanel");
+      const services = payload && payload.services ? payload.services : {};
+      const counts = services && services.counts ? services.counts : {};
+      const processes = [...normalizeStatusItems(services && services.processes)];
+      if (!processes.length) {
+        root.innerHTML = `<div class="empty">프로세스 데이터가 없습니다.</div>`;
+        return;
+      }
+      const groupedCounts = {};
+      for (const item of processes) {
+        const label = describeProcess(item);
+        if (!groupedCounts[label]) groupedCounts[label] = { count: 0, envs: new Set(), kinds: new Set() };
+        groupedCounts[label].count += 1;
+        if (item && item.instance_label) groupedCounts[label].envs.add(String(item.instance_label));
+        if (item && item.kind) groupedCounts[label].kinds.add(String(item.kind));
+      }
+      processes.sort((left, right) => {
+        const leftEnv = String(left && left.instance_label || "~");
+        const rightEnv = String(right && right.instance_label || "~");
+        if (leftEnv !== rightEnv) return leftEnv.localeCompare(rightEnv);
+        return describeProcess(left).localeCompare(describeProcess(right));
+      });
+      const groupedRows = Object.entries(groupedCounts).sort((left, right) => left[0].localeCompare(right[0]));
+      root.innerHTML = `
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="block-label">총 프로세스</div>
+            <div class="summary-value">${esc(String(Number(counts.total || 0)))}</div>
+          </div>
+          <div class="summary-card">
+            <div class="block-label">Sidae 프로세스</div>
+            <div class="summary-value">${esc(String(Number(counts.sidae || 0)))}</div>
+          </div>
+          <div class="summary-card">
+            <div class="block-label">Ollama 프로세스</div>
+            <div class="summary-value">${esc(String(Number(counts.ollama || 0)))}</div>
+          </div>
+          <div class="summary-card">
+            <div class="block-label">실행 환경 커버리지</div>
+            <div class="summary-value small">${esc(Array.from(new Set(processes.map((item) => item && item.instance_label).filter(Boolean))).join(" · ") || "shared")}</div>
+          </div>
+        </div>
+        <div class="service-list">
+          ${groupedRows.map(([label, meta]) => `
+            <div class="service-row ${toneClass(Array.from(meta.kinds).some((kind) => kind.startsWith("ollama")) ? "warn" : "ok")}">
+              <div class="process-head">
+                <div>
+                  <div class="service-name">${esc(label)}</div>
+                  <div class="card-meta">${esc(Array.from(meta.envs).join(" · ") || "shared")} · 프로세스 ${esc(String(meta.count))}개</div>
+                </div>
+                ${badge(Array.from(meta.kinds).some((kind) => kind.startsWith("ollama")) ? "warn" : "ok", "Running")}
+              </div>
+              <div class="badge-row">
+                ${Array.from(meta.kinds).map((kind) => badge("info", kind)).join("")}
+              </div>
+              <details class="collapse">
+                <summary>프로세스 raw 보기</summary>
+                <div class="collapse-body">
+                  <div class="detail-list">
+                    ${processes.filter((item) => describeProcess(item) === label).map((item) => `
+                      <div class="list-row">
+                        <div class="field-main small">${esc(text(item && item.instance_label, "shared"))} · PID ${esc(text(item && item.pid))}</div>
+                        <div class="list-meta">CPU ${esc(formatNumber(item && item.cpu_percent))}% · 메모리 ${esc(formatNumber(item && item.memory_percent))}% · 가동 ${esc(text(item && item.elapsed))}</div>
+                        <div class="field-value mono">${esc(truncate(text(item && item.command), 200))}</div>
+                      </div>
+                    `).join("")}
+                  </div>
+                </div>
+              </details>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderLlm(payload) {
+      const root = document.getElementById("llmPanel");
+      const llm = payload && payload.llm ? payload.llm : {};
+      const configuredModels = normalizeStatusItems(llm && llm.configured_models);
+      const loadedModels = normalizeStatusItems(llm && llm.loaded_models);
+      const endpoints = normalizeStatusItems(llm && llm.endpoints);
+      const warnings = normalizeStatusItems(llm && llm.recent_warnings);
+      root.innerHTML = `
+        <div class="llm-mini-grid">
+          <div class="summary-card ${toneClass(statusTone(llm && llm.status))}">
+            <div class="block-label">Status</div>
+            <div class="summary-value">${esc(statusText(llm && llm.status))}</div>
+          </div>
+          <div class="summary-card">
+            <div class="block-label">Configured Models</div>
+            <div class="summary-value">${esc(String(configuredModels.length))}</div>
+          </div>
+          <div class="summary-card">
+            <div class="block-label">Loaded Models</div>
+            <div class="summary-value">${esc(String(loadedModels.length))}</div>
+          </div>
+          <div class="summary-card">
+            <div class="block-label">Recent Warnings</div>
+            <div class="summary-value">${esc(String(warnings.length))}</div>
+          </div>
+        </div>
+
+        ${llm && llm.error ? `<div class="recommendation">${esc(truncate(llm.error, 220))}</div>` : ""}
+
+        <div class="cluster">
+          <div class="block-label">Configured Models</div>
+          <div class="badge-row">
+            ${configuredModels.length ? configuredModels.map((model) => badge("info", model)).join("") : badge("warn", "설정 모델 없음")}
+          </div>
+        </div>
+
+        <div class="cluster">
+          <div class="block-label">Loaded Models</div>
+          <div class="detail-list">
+            ${loadedModels.length ? loadedModels.map((item) => `
+              <div class="list-row">
+                <div class="field-main small">${esc(text(item && item.name))}</div>
+                <div class="list-meta">컨텍스트 ${esc(text(item && item.context))} · 유지 ${esc(text(item && item.until))}</div>
+              </div>
+            `).join("") : `<div class="empty">현재 로드된 모델이 없습니다.</div>`}
+          </div>
+        </div>
+
+        <div class="cluster">
+          <div class="block-label">Endpoints</div>
+          <div class="endpoint-list">
+            ${endpoints.length ? endpoints.map((item) => `
+              <div class="endpoint-row ${toneClass(item && item.http_ok ? "ok" : "err")}">
+                <div class="endpoint-head">
+                  <div>
+                    <div class="endpoint-title">${esc(baseName(text(item && item.base_url, "endpoint")) || text(item && item.base_url, "endpoint"))}</div>
+                    <div class="endpoint-url mono">${esc(text(item && item.base_url))}</div>
+                  </div>
+                  ${badge(item && item.http_ok ? "ok" : "err", item && item.http_ok ? "응답 정상" : "응답 실패")}
+                </div>
+                <div class="card-meta">응답 ${esc(text(item && item.response_ms, "-"))}ms · 태그 ${esc(text(item && item.tags_response_ms, "-"))}ms</div>
+                ${normalizeStatusItems(item && item.loaded_model_names).length ? `
+                  <div class="badge-row">
+                    ${normalizeStatusItems(item && item.loaded_model_names).map((name) => badge("info", name)).join("")}
+                  </div>
+                ` : ""}
+                ${item && item.error ? `
+                  <details class="collapse">
+                    <summary>오류 원문 보기</summary>
+                    <div class="collapse-body">
+                      <pre>${esc(text(item && item.error))}</pre>
+                    </div>
+                  </details>
+                ` : ""}
+              </div>
+            `).join("") : `<div class="empty">엔드포인트 정보가 없습니다.</div>`}
+          </div>
+        </div>
+
+        <div class="cluster">
+          <div class="block-label">Recent Warnings</div>
+          <div class="warning-list">
+            ${warnings.length ? warnings.map((line) => `
+              <div class="warning-note ${toneClass("warn")}">
+                <div class="card-meta">${esc(truncate(line, 180))}</div>
+                <details class="collapse">
+                  <summary>원문 보기</summary>
+                  <div class="collapse-body">
+                    <pre>${esc(text(line))}</pre>
+                  </div>
+                </details>
+              </div>
+            `).join("") : `<div class="empty">최근 LLM 경고가 없습니다.</div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    function userPriority(user) {
+      return userAttentionScore(user);
+    }
+
+    function renderUsers(payload, actionPayload) {
+      const root = document.getElementById("userPanel");
+      const users = allUsers(payload);
+      users.sort((left, right) => {
+        const gap = userPriority(right) - userPriority(left);
+        if (gap !== 0) return gap;
+        return String(left && left.chat_id || "").localeCompare(String(right && right.chat_id || ""));
+      });
+      const withActions = users.filter((item) => Number(item && item.sync_dashboard && item.sync_dashboard.action_required_count || 0) > 0).length;
+      const withFailures = users.filter((item) => item && item.last_failed_stage).length;
+      const withMissingBriefs = users.filter((item) => Number(item && item.material_brief_summary && item.material_brief_summary.missing_count || 0) > 0).length;
+      const missingBriefs = users.reduce((sum, item) => sum + Number(item && item.material_brief_summary && item.material_brief_summary.missing_count || 0), 0);
+      root.innerHTML = `
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="block-label">활성 사용자</div>
+            <div class="summary-value">${esc(String(users.length))}</div>
+          </div>
+          <div class="summary-card">
+            <div class="block-label">직접 확인 필요 사용자</div>
+            <div class="summary-value">${esc(String(withActions))}</div>
+          </div>
+          <div class="summary-card">
+            <div class="block-label">실패 단계 기록 사용자</div>
+            <div class="summary-value">${esc(String(withFailures))}</div>
+          </div>
+          <div class="summary-card ${toneClass(withMissingBriefs ? "warn" : "info")}">
+            <div class="block-label">요약 누락 사용자</div>
+            <div class="summary-value">${esc(String(withMissingBriefs))}</div>
+          </div>
+          <div class="summary-card ${toneClass(missingBriefs ? "warn" : "info")}">
+            <div class="block-label">누락 요약 건수</div>
+            <div class="summary-value">${esc(String(missingBriefs))}</div>
+          </div>
+        </div>
+        <div class="user-list">
+          ${users.length ? users.map((user) => {
+            const briefSummary = user && user.material_brief_summary ? user.material_brief_summary : {};
+            const missingSamples = normalizeStatusItems(briefSummary && briefSummary.samples);
+            const auditRequest = {
+              action: "user_audit",
+              instance_label: user && user.instance_label,
+              chat_id: user && user.chat_id,
+              user_id: user && user.user_id,
+            };
+            const refreshRequest = {
+              action: "user_refresh",
+              instance_label: user && user.instance_label,
+              chat_id: user && user.chat_id,
+              user_id: user && user.user_id,
+            };
+            const repairRequest = {
+              action: "repair_missing_material_briefs",
+              instance_label: user && user.instance_label,
+              chat_id: user && user.chat_id,
+              user_id: user && user.user_id,
+            };
+            const userBusy = isScopeBusy(actionPayload, auditRequest);
+            return `
+            <div class="cluster ${toneClass(userPriority(user) > 0 ? "warn" : "ok")}">
+              <div class="user-row ${toneClass(userPriority(user) > 0 ? "warn" : "ok")}">
+                <div class="user-trace-head">
+                  <div class="user-signal"></div>
+                  <div class="user-trace-main">
+                    <div class="user-title">chat_id ${esc(text(user && user.chat_id))} · ${esc(text(user && user.next_task && user.next_task.title || user && user.next_event && user.next_event.title || user && user.recent_material && user.recent_material.filename || "다음 항목 없음"))}</div>
+                    <div class="card-meta">timezone ${esc(text(user && user.timezone))} · instance ${esc(text(user && user.instance_label))} · connections ${esc(String(normalizeStatusItems(user && user.connections).length))}</div>
+                  </div>
+                  <div class="user-code">${esc(user && user.last_failed_stage ? text(user.last_failed_stage.stage) : (user && user.health_summary && user.health_summary.overall_ready ? "OK" : "WATCH"))}</div>
+                </div>
+
+                <div class="user-detail-grid">
+                  <div class="detail-item">
+                    <div class="block-label">Sync Summary</div>
+                    <div class="field-main small">직접 확인 ${esc(String(Number(user && user.sync_dashboard && user.sync_dashboard.action_required_count || 0)))}</div>
+                    <div class="field-value">마지막 성공 ${esc(user && user.sync_dashboard && user.sync_dashboard.last_successful_sync_at ? fmtDate(user.sync_dashboard.last_successful_sync_at) : "기록 없음")}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="block-label">Health Summary</div>
+                    <div class="field-main small">${esc(userHealthSummary(user))}</div>
+                    <div class="field-value">${esc(user && user.health_summary && user.health_summary.overall_ready ? "정상" : "확인 필요")}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="block-label">Next Event / Task</div>
+                    <div class="field-main small">${esc(user && user.next_event && user.next_event.title || user && user.next_task && user.next_task.title || "없음")}</div>
+                    <div class="field-value">${esc(user && user.next_event && user.next_event.start_at ? fmtDate(user.next_event.start_at) : user && user.next_task && user.next_task.due_at ? fmtDate(user.next_task.due_at) : "기록 없음")}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="block-label">Recent Material</div>
+                    <div class="field-main small">${esc(user && user.recent_material && user.recent_material.filename || "없음")}</div>
+                    <div class="field-value">${esc(user && user.recent_material && user.recent_material.updated_at ? fmtDate(user.recent_material.updated_at) : "기록 없음")}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="block-label">Material Briefs</div>
+                    <div class="field-main small">준비 ${esc(String(Number(briefSummary && briefSummary.ready_count || 0)))} · 누락 ${esc(String(Number(briefSummary && briefSummary.missing_count || 0)))}</div>
+                    <div class="field-value">AI ${esc(String(Number(briefSummary && briefSummary.llm_count || 0)))} · heuristic ${esc(String(Number(briefSummary && briefSummary.heuristic_count || 0)))}</div>
+                  </div>
+                </div>
+
+                <div class="user-action-row">
+                  <div class="action-button-group">
+                    ${renderActionButton("사용자 점검", auditRequest, "", userBusy)}
+                    ${renderActionButton("사용자 새로고침", refreshRequest, "secondary", userBusy)}
+                    ${renderActionButton("누락 요약 채우기", repairRequest, "warn", userBusy)}
+                  </div>
+                  <div class="card-meta">
+                    ${userBusy
+                      ? "이 사용자 범위의 작업이 현재 실행 중입니다."
+                      : Number(briefSummary && briefSummary.missing_count || 0) > 0
+                      ? `누락 요약 ${Number(briefSummary && briefSummary.missing_count || 0)}건 · ${esc(text(missingSamples[0] && missingSamples[0].reason, "원인 미확인"))}`
+                      : "강의자료 요약 누락 항목 없음"}
+                  </div>
+                </div>
+
+                ${user && user.last_failed_stage ? `
+                  <div class="recommendation">Last Failed Stage: ${esc(text(user.last_failed_stage.stage))} · ${esc(truncate(text(user.last_failed_stage.message), 150))}</div>
+                ` : ""}
+              </div>
+              <details class="collapse">
+                <summary>연결 / surface 상세</summary>
+                <div class="collapse-body">
+                  <div class="detail-list">
+                    ${normalizeStatusItems(user && user.connections).length ? normalizeStatusItems(user && user.connections).map((item) => `
+                      <div class="list-row">
+                        <div class="block-label">Connection</div>
+                        <div class="field-main small">${esc(text(item && (item.display_name || item.school_slug)))}</div>
+                        <div class="list-meta">${esc(connectionKindLabel(item && item.kind))} · 확인 ${esc(item && item.last_verified_at ? fmtDate(item.last_verified_at) : "기록 없음")}</div>
+                      </div>
+                    `).join("") : `<div class="empty">활성 연결 없음</div>`}
+                  </div>
+                  <div class="detail-list">
+                    ${healthSurfaceIssues(user).length ? healthSurfaceIssues(user).map(([key, item]) => `
+                      <div class="list-row">
+                        <div class="field-main small">${esc(surfaceLabel(key))}</div>
+                        <div class="list-meta">${esc(statusText(item && item.status))} · ${esc(summarizeHealthReason(item && item.reason))}</div>
+                      </div>
+                    `).join("") : `<div class="empty">사용자 health surface 경고 없음</div>`}
+                  </div>
+                  <div class="detail-list">
+                    ${missingSamples.length ? missingSamples.map((item) => `
+                      <div class="list-row">
+                        <div class="field-main small">${esc(text(item && item.filename))}</div>
+                        <div class="list-meta">${esc(text(item && item.reason))} · ${esc(item && item.updated_at ? fmtDate(item.updated_at) : "기록 없음")}</div>
+                      </div>
+                    `).join("") : `<div class="empty">누락된 강의자료 요약 없음</div>`}
+                  </div>
+                </div>
+              </details>
+            </div>
+          `;
+          }).join("") : `<div class="empty">표시할 사용자가 없습니다.</div>`}
+        </div>
+      `;
+      bindActionButtons(root);
+    }
+
+    function renderLogs(payload) {
+      const root = document.getElementById("logsPanel");
+      const files = normalizeStatusItems(payload && payload.logs && payload.logs.files);
+      const summary = summarizeLogs(payload);
+      const highlights = collectLogAlertLines(files, 6);
+      if (!files.length) {
+        root.innerHTML = `<div class="empty">표시할 로그 파일이 없습니다.</div>`;
+        return;
+      }
+      root.innerHTML = `
+        <div class="log-summary-grid">
+          <div class="summary-card">
+            <div class="block-label">로그 파일</div>
+            <div class="summary-value">${esc(String(summary.files))}</div>
+          </div>
+          <div class="summary-card ${toneClass(summary.errors ? "err" : "info")}">
+            <div class="block-label">오류</div>
+            <div class="summary-value">${esc(String(summary.errors))}</div>
+          </div>
+          <div class="summary-card ${toneClass(summary.warnings ? "warn" : "info")}">
+            <div class="block-label">경고</div>
+            <div class="summary-value">${esc(String(summary.warnings))}</div>
+          </div>
+          <div class="summary-card">
+            <div class="block-label">최근 갱신</div>
+            <div class="summary-value small">${esc(summary.latest ? fmtRelative(summary.latest) : "기록 없음")}</div>
+            <div class="field-value">${esc(summary.latest ? fmtDate(summary.latest) : "")}</div>
+          </div>
+        </div>
+
+        <div class="cluster">
+          <div class="block-label">Recent Warning / Error Lines</div>
+          <div class="log-table-wrap">
+            <table class="log-table">
+              <thead class="table-head">
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Source</th>
+                  <th>Signal</th>
+                  <th class="log-action">Level</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${highlights.length ? highlights.map((item) => `
+                  <tr>
+                    <td class="mono">${esc(item.mtime ? fmtDate(item.mtime) : "-")}</td>
+                    <td>${esc(baseName(item.path))}</td>
+                    <td>${esc(truncate(item.line, 220))}</td>
+                    <td class="log-action">${badge(item.tone, item.tone === "err" ? "오류" : "경고")}</td>
+                  </tr>
+                `).join("") : `<tr><td colspan="4">최근 경고/오류 라인이 없습니다.</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="cluster">
+          <div class="block-label">Raw Log Files</div>
+          <div class="log-file-list">
+            ${files.map((item) => `
+              <div class="log-file ${toneClass(item && item.error_count > 0 ? "err" : item && item.warning_count > 0 ? "warn" : "info")}">
+                <div class="log-file-head">
+                  <div>
+                    <div class="log-title">${esc(baseName(item && item.path))}</div>
+                    <div class="log-path mono">${esc(text(item && item.path))}</div>
+                    <div class="card-meta">${esc(item && item.mtime ? fmtDate(item.mtime) : "mtime 없음")}</div>
+                  </div>
+                  <div class="badge-row">
+                    ${badge(item && item.error_count > 0 ? "err" : "info", `오류 ${Number(item && item.error_count || 0)}`)}
+                    ${badge(item && item.warning_count > 0 ? "warn" : "info", `경고 ${Number(item && item.warning_count || 0)}`)}
+                  </div>
+                </div>
+                <details class="collapse">
+                  <summary>raw tail 보기</summary>
+                  <div class="collapse-body">
+                    <pre>${esc(normalizeStatusItems(item && item.tail).join("\\n"))}</pre>
+                  </div>
+                </details>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    async function fetchOpsData() {
+      try {
+        const response = await fetch("/api/snapshot", { cache: "no-store" });
+        if (!response.ok) throw new Error(`snapshot fetch failed: ${response.status}`);
+        const payload = await response.json();
+        latestSnapshotPayload = payload;
+        try {
+          const actionResponse = await fetch("/api/actions", { cache: "no-store" });
+          if (actionResponse.ok) {
+            latestActionPayload = await actionResponse.json();
+          }
+        } catch {
+          /* keep last action state */
+        }
+        renderHeaderMeta(payload);
+        renderKpis(payload);
+        renderAlertDigest(payload);
+        renderAdminActions(payload, latestActionPayload);
+        renderEnvironmentPanels(payload);
+        renderServices(payload);
+        renderLlm(payload);
+        renderUsers(payload, latestActionPayload);
+        renderLogs(payload);
+      } catch (error) {
+        document.getElementById("headerSummary").textContent = "스냅샷을 불러오지 못했습니다.";
+        document.getElementById("headerStatus").className = "status-badge tone-err";
+        document.getElementById("headerStatus").textContent = "전체 상태 오류";
+      }
+    }
+
+    fetchOpsData();
+    window.setInterval(fetchOpsData, REFRESH_MS);
+  </script>
+</body>
+</html>

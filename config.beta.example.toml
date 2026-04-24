@@ -1,0 +1,46 @@
+[sidae]
+INSTANCE_NAME = "beta"
+TIMEZONE = "Asia/Seoul"
+
+# Keep beta state fully separate from prod.
+STORAGE_ROOT_DIR = "/path/to/SidaeSecretary_beta"
+DATABASE_PATH = "data/sidae_beta.db"
+SECRET_STORE_BACKEND = "file"
+
+# UOS beta only.
+UCLASS_WS_BASE = "https://uclass.uos.ac.kr/webservice/rest/server.php"
+UOS_OPENAPI_TIMETABLE_URL = "https://wise.uos.ac.kr/COM/ApiTimeTable/list.do"
+UOS_OPENAPI_YEAR = ""
+UOS_OPENAPI_TERM = ""
+ONBOARDING_ALLOWED_SCHOOL_SLUGS = ["uos_online_class", "uos_portal"]
+ONBOARDING_PUBLIC_BASE_URL = "https://connect.example.invalid"
+ONBOARDING_SESSION_TTL_MINUTES = 15
+
+TELEGRAM_ENABLED = true
+TELEGRAM_ALLOWED_CHAT_IDS = ["<telegram-chat-id>"]
+TELEGRAM_COMMANDS_ENABLED = true
+# Closed beta is the /bot validation surface before prod promotion.
+TELEGRAM_SMART_COMMANDS_ENABLED = true
+TELEGRAM_ASSISTANT_ENABLED = true
+TELEGRAM_ASSISTANT_WRITE_ENABLED = true
+
+# Optional operator-side shortcut for opening the private ops dashboard.
+OPS_DASHBOARD_SSH_HOST = "<runtime-host>"
+OPS_DASHBOARD_SSH_USER = "<runtime-user>"
+OPS_DASHBOARD_REMOTE_HOST = "127.0.0.1"
+OPS_DASHBOARD_REMOTE_PORT = 8793
+OPS_DASHBOARD_LOCAL_PORT = 8793
+
+# Set the beta bot token in `.env`, not here.
+# TELEGRAM_BOT_TOKEN=
+
+# Optional but recommended runtime pieces for beta.
+UCLASS_ENABLE_FORUMS = false
+UCLASS_DOWNLOAD_MATERIALS = true
+WEATHER_ENABLED = true
+AIR_QUALITY_ENABLED = true
+BRIEFING_ENABLED = false
+LLM_ENABLED = true
+LLM_PROVIDER = "local"
+LLM_MODEL = "gemma4"
+LLM_LOCAL_ENDPOINT = "http://127.0.0.1:11434/api/chat"

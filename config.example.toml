@@ -1,0 +1,110 @@
+[sidae]
+INSTANCE_NAME = "" # leave empty for prod; set "beta" for a beta-only instance
+STORAGE_ROOT_DIR = "/path/to/SidaeSecretary"
+UCLASS_WS_BASE = "https://uclass.univ.edu/webservice/rest/server.php"
+UCLASS_WSTOKEN = "replace-with-token"
+# Alternative auth (recommended): ID/PW -> automatic token issuance
+UCLASS_USERNAME = ""
+UCLASS_PASSWORD = ""
+UCLASS_TOKEN_SERVICE = "moodle_mobile_app"
+UCLASS_TOKEN_ENDPOINT = ""
+TIMEZONE = "Asia/Seoul"
+UOS_OPENAPI_TIMETABLE_URL = "https://wise.uos.ac.kr/COM/ApiTimeTable/list.do"
+UOS_OPENAPI_TIMETABLE_API_KEY = ""
+UOS_OPENAPI_TIMETABLE_TIMEOUT_SEC = 15
+UOS_OPENAPI_YEAR = "" # optional override, e.g. 2026
+UOS_OPENAPI_TERM = "" # optional override, e.g. "10" for 1st semester, "20" for 2nd
+
+# Optional
+DATABASE_PATH = "data/sidae.db"
+
+# Optional wsfunction overrides
+UCLASS_FUNC_SITE_INFO = "core_webservice_get_site_info"
+UCLASS_FUNC_POPUP_NOTIFICATIONS = "message_popup_get_popup_notifications"
+UCLASS_FUNC_ACTION_EVENTS = "core_calendar_get_action_events_by_timesort"
+UCLASS_FUNC_COURSES = "core_enrol_get_users_courses"
+UCLASS_FUNC_COURSE_CONTENTS = "core_course_get_contents"
+UCLASS_FUNC_ASSIGNMENTS = "mod_assign_get_assignments"
+UCLASS_FUNC_FORUMS = "mod_forum_get_forums_by_courses"
+UCLASS_FUNC_FORUM_DISCUSSIONS = "mod_forum_get_forum_discussions_paginated"
+
+# Optional UClass feature flags / behavior
+UCLASS_ENABLE_POPUP_NOTIFICATIONS = true
+UCLASS_ENABLE_ACTION_EVENTS = true
+UCLASS_ENABLE_COURSES = true
+UCLASS_ENABLE_CONTENTS = true
+UCLASS_ENABLE_ASSIGNMENTS = true
+UCLASS_ENABLE_FORUMS = false
+UCLASS_REQUIRED_WSFUNCTIONS = ""
+UCLASS_DOWNLOAD_MATERIALS = true
+UCLASS_DOWNLOAD_RETRIES = 3
+UCLASS_DOWNLOAD_BACKOFF_SEC = 1.5
+
+# Optional portal import slug prefix
+PORTAL_SLUG = "academic"
+
+# Optional Telegram inbox
+TELEGRAM_ENABLED = false
+TELEGRAM_BOT_TOKEN = ""
+TELEGRAM_ALLOWED_CHAT_IDS = ""
+TELEGRAM_POLL_LIMIT = 100
+TELEGRAM_COMMANDS_ENABLED = false
+TELEGRAM_SMART_COMMANDS_ENABLED = false
+TELEGRAM_ASSISTANT_ENABLED = false
+TELEGRAM_ASSISTANT_WRITE_ENABLED = false
+# Public HTTPS origin that terminates TLS and forwards /moodle-connect to `sidae onboarding serve`
+ONBOARDING_PUBLIC_BASE_URL = ""
+ONBOARDING_SESSION_TTL_MINUTES = 15
+# Optional onboarding school scope. Leave empty to allow every registered school.
+# For a closed UOS beta, set ["uos_online_class", "uos_portal"].
+ONBOARDING_ALLOWED_SCHOOL_SLUGS = []
+
+# Optional LLM summaries
+LLM_ENABLED = false
+LLM_PROVIDER = "local"
+LLM_MODEL = "gemma4"
+LLM_LOCAL_ENDPOINT = "http://127.0.0.1:11434/api/chat"
+LLM_TIMEOUT_SEC = 30
+
+# Optional remote ops dashboard opener for the operator Mac
+OPS_DASHBOARD_SSH_HOST = ""
+OPS_DASHBOARD_SSH_USER = ""
+OPS_DASHBOARD_SSH_PORT = 22
+OPS_DASHBOARD_REMOTE_HOST = "127.0.0.1"
+OPS_DASHBOARD_REMOTE_PORT = 8793
+OPS_DASHBOARD_LOCAL_PORT = 8793
+OPS_DASHBOARD_URL_PATH = "/"
+
+# Optional outbound privacy gate
+INCLUDE_IDENTITY = false
+
+# Optional material extraction + briefing
+MATERIAL_EXTRACTION_ENABLED = false
+MATERIAL_BRIEFING_ENABLED = false
+MATERIAL_BRIEF_PUSH_ENABLED = false
+MATERIAL_BRIEF_PUSH_MAX_ITEMS = 3
+MATERIAL_EXTRACT_MAX_CHARS = 12000
+
+# Optional study review scheduler
+REVIEW_ENABLED = false
+REVIEW_INTERVALS_DAYS = [1, 3, 7, 14]
+REVIEW_DURATION_MIN = 25
+REVIEW_MORNING_HOUR = 9
+
+# Optional daily digest push
+DIGEST_ENABLED = false
+DIGEST_TIME_LOCAL = "08:30"
+DIGEST_CHANNEL = "telegram"
+DIGEST_TASK_LOOKAHEAD_DAYS = 3
+
+# Optional morning/evening briefing push
+BRIEFING_ENABLED = false
+BRIEFING_MORNING_TIME_LOCAL = "09:00"
+BRIEFING_EVENING_TIME_LOCAL = "21:00"
+BRIEFING_CHANNEL = "telegram"
+BRIEFING_DELIVERY_MODE = "direct" # direct or precompute_only
+BRIEFING_RELAY_ENDPOINT = "" # relay URL like https://relay.example.com/briefing
+BRIEFING_RELAY_SHARED_SECRET = "" # shared HMAC secret stored on mac + relay only
+BRIEFING_RELAY_STATE_FILE = "data/briefing_relay_state.json"
+BRIEFING_TASK_LOOKAHEAD_DAYS = 7
+BRIEFING_MAX_CLASSES = 6

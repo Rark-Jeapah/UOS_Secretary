@@ -1,0 +1,24 @@
+#!/bin/zsh
+set -euo pipefail
+
+BARE_DIR="/PATH/TO/git/UOS_secretary.git"
+typeset -A APP_DIRS
+APP_DIRS[deploy]="/PATH/TO/apps/UOS_secretary"
+APP_DIRS[beta]="/PATH/TO/apps/UOS_secretary_beta"
+
+typeset -A CONFIG_FILES
+CONFIG_FILES[deploy]="${APP_DIRS[deploy]}/config.toml"
+CONFIG_FILES[beta]="${APP_DIRS[beta]}/config.toml"
+
+while read -r _oldrev newrev refname; do
+  branch="${refname#refs/heads/}"
+  app_dir="${APP_DIRS[$branch]-}"
+  if [[ -z "$app_dir" ]]; then
+    continue
+  fi
+  config_file="${CONFIG_FILES[$branch]-$app_dir/config.toml}"
+  mkdir -p "$app_dir"
+  git --git-dir="$BARE_DIR" --work-tree="$app_dir" checkout -f "$branch"
+  git --git-dir="$BARE_DIR" --work-tree="$app_dir" reset --hard "$newrev"
+  CONFIG_FILE="$config_file" "$app_dir/deploy/git/redeploy.sh" "$app_dir"
+done
