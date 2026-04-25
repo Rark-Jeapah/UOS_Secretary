@@ -322,3 +322,7 @@ git grep -n -E "(TOKEN|PASSWORD|SECRET|API_KEY)=([A-Za-z0-9_./+=:-]{12,})" -- . 
 ```
 
 실제 token, 비밀번호, 내부 호스트명, 개인 절대경로가 보이면 커밋하지 말고 먼저 제거하세요.
+
+## 라이선스
+
+이 프로젝트는 MIT License로 배포됩니다. 자세한 내용은 [LICENSE](LICENSE)를 확인하세요.

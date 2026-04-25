@@ -5,6 +5,7 @@ setup(
     name="sidae-secretary",
     version="0.1.0",
     description="Sidae Secretary local-first sync agent",
+    license="MIT",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
     package_data={"sidae_secretary": ["ops_dashboard_assets/*.html"]},
