@@ -1,516 +1,324 @@
 # Sidae Secretary
 
-Local-first macOS sync agent for the current University of Seoul Telegram beta.
+서울시립대학교 학생을 위한 로컬 실행형 Telegram 비서입니다.
 
-## Current Beta-Critical Path
+본인 Mac에서 UClass, 서울시립대 시간표 API, 학교 공지, 날씨 정보를 동기화하고 Telegram 봇으로 오늘/내일 일정, 과제, 수업 자료, 공지, 날씨, 리마인더를 확인할 수 있습니다. 데이터와 계정 정보는 기본적으로 사용자의 컴퓨터에 저장됩니다.
 
-- UOS official API / UOS portal fallback for timetable and course metadata
-- UClass/Moodle for materials and assignments
-- Telegram commands and morning/evening briefings
-- per-user weather
-- UOS general/academic notices
+## 지원 범위
 
-## Optional / Non-Critical For This Milestone
+현재 사용자용 지원 범위는 서울시립대학교입니다.
 
-- iCloud dashboard and material archive
-- macOS GUI launcher
-- relay-based external briefing delivery
+- UClass 과제, 일정, 강의 자료, 공지 동기화
+- 서울시립대 시간표 API 기반 수업 시간표 동기화
+- 학교 일반 공지와 학사 공지 조회
+- Telegram 명령어 응답
+- 오전/저녁 브리핑과 `/plan` 리마인더
+- 지역 기반 날씨와 미세먼지 조회
 
-Runtime model:
+학교 계정 비밀번호, Telegram bot token, API key는 사용자가 직접 발급하고 관리해야 합니다. `.env`, `config.toml`, `data/`, `credentials/` 같은 로컬 설정/상태 파일은 공개 저장소에 올리지 마세요.
 
-- Local SQLite DB is the source of truth for Telegram replies, reminders, briefings, and cached UOS/UClass data.
-- The beta-critical runtime centers on UOS portal/UClass/weather/Telegram. iCloud publish remains an optional output.
-- UClass materials and dashboard artifacts can still be written to iCloud Drive for offline viewing/archive when that optional surface is enabled.
-- The recommended Telegram path is a long-running `telegram-listener` process, not a minute-based poller.
+## 준비물
 
-Refactored module boundaries:
+- macOS
+- Python 3.11 이상
+- Telegram 계정
+- BotFather에서 만든 Telegram bot token
+- 서울시립대 UClass 계정
+- 선택 사항: 서울시립대 공공 API key
+- 선택 사항: `/connect` 웹 로그인 링크를 외부에서 열기 위한 HTTPS 터널 또는 리버스 프록시
 
-- Telegram reply/view state:
-  - `src/sidae_secretary/telegram_setup_state.py`
-  - `src/sidae_secretary/day_agenda_state.py`
-  - `src/sidae_secretary/ops_health_state.py`
-- Onboarding/application services:
-  - `src/sidae_secretary/onboarding_service.py`
-  - `src/sidae_secretary/onboarding_school_connect.py`
-  - `src/sidae_secretary/portal_sync_service.py`
-- Ops dashboard:
-  - `src/sidae_secretary/ops_snapshot_service.py`
-  - `src/sidae_secretary/ops_action_service.py`
-  - `src/sidae_secretary/ops_dashboard.py`
-  - `src/sidae_secretary/ops_dashboard_assets/dashboard.html`
-- DB read/write facades under `src/sidae_secretary/db.py` now delegate to:
-  - `src/sidae_secretary/db_auth_attempts.py`
-  - `src/sidae_secretary/db_connections.py`
-  - `src/sidae_secretary/db_sync.py`
-  - `src/sidae_secretary/db_dashboard_queries.py`
-- CLI command registration:
-  - `src/sidae_secretary/cli.py` keeps root wiring/shared helpers
-  - `src/sidae_secretary/cli_ops.py`
-  - `src/sidae_secretary/cli_onboarding.py`
-  - `src/sidae_secretary/cli_admin.py`
-  - `src/sidae_secretary/cli_launchd.py`
+Python은 macOS 기본 Python보다 Homebrew 또는 python.org 배포판을 권장합니다.
 
-## Quick Start
+```bash
+python3.11 -c "import ssl; print(ssl.OPENSSL_VERSION)"
+```
 
-1. Create and activate a Python 3.11+ virtual environment.
-   - Use an OpenSSL-backed Python build (Homebrew/python.org), not macOS system Python.
-   - Example: `python3.11 -m venv .venv && source .venv/bin/activate`
-   - Verify SSL backend: `python -c "import ssl; print(ssl.OPENSSL_VERSION)"`
-2. Install dependencies:
-   - `pip install -e .`
-3. Copy `.env.example` to `.env` and fill required values (or use `config.example.toml`).
-   - UClass auth: either `UCLASS_WSTOKEN`, or `UCLASS_USERNAME` + `UCLASS_PASSWORD`.
-4. Run the beta-critical path:
-   - `sidae doctor`
-   - Set `ONBOARDING_PUBLIC_BASE_URL` to the public HTTPS origin that will terminate `/moodle-connect` and forward it to `sidae onboarding serve`.
-   - For a closed UOS beta, set `ONBOARDING_ALLOWED_SCHOOL_SLUGS=["uos_online_class","uos_portal"]`.
-   - Do not point users at a raw `http://host:port/...` onboarding URL; that exposes the login flow without TLS.
-   - `sudo .venv/bin/sidae launchd install-uclass-poller --interval-minutes 60 --connectivity-check-seconds 30 --sync-timeout-seconds 600 --scope daemon --run-as-user <mac_user>`
-   - `sudo .venv/bin/sidae launchd install-weather-sync --minute-offset 20 --sync-timeout-seconds 600 --scope daemon --run-as-user <mac_user>`
-   - `sudo .venv/bin/sidae launchd install-telegram-listener --poll-timeout-seconds 10 --error-backoff-seconds 2 --max-consecutive-errors 6 --scope daemon --run-as-user <mac_user>`
-   - `sudo .venv/bin/sidae launchd install-onboarding --host 127.0.0.1 --port 8791 --scope daemon --run-as-user <mac_user>`
-   - `sidae status`
-   - Optional add-ons:
-     - `sudo .venv/bin/sidae launchd install-ops-dashboard --host 127.0.0.1 --port 8793 --scope daemon --run-as-user <mac_user>`
-     - `sidae launchd install-publish --interval-minutes 60 --scope agent`
+`LibreSSL`이 보이면 네트워크 라이브러리에서 문제가 날 수 있으니 OpenSSL 기반 Python을 설치하는 편이 좋습니다.
 
-Recommended topology:
+## 설치
 
-- Development machine: editor, browser, and local tests.
-- Runtime machine: always-on host for UOS/UClass sync, Telegram, and onboarding.
-- Remote management: Tailscale or LAN SSH for shell access. Screen Sharing is only needed for optional GUI or browser-driven automation.
-- Beta test deployment: commit locally, then push the tested branch to the beta deployment ref.
-- Production promotion: after beta validation, push the same tested commit to the prod deployment ref.
+```bash
+git clone https://github.com/Rark-Jeapah/UOS_Secretary.git
+cd UOS_Secretary
 
-Recommended always-on Mac setup:
+python3.11 -m venv .venv
+./.venv/bin/python -m pip install --upgrade pip
+./.venv/bin/python -m pip install -e .
 
-- Keep the Mac logged in, connected to power, and out of system sleep.
-- Let the UOS portal onboarding/session path handle timetable and course metadata for the current beta.
-- Let `uclass-poller` handle UClass ingestion.
-- Let `weather-sync` handle KMA weather and Seoul district air-quality refresh on a fixed hourly cadence.
-- Let `telegram-listener` handle Telegram commands, `/plan` reminders, and 09:00 / 21:00 briefings.
-- Keep `uclass-poller`, `weather-sync`, `telegram-listener`, and `onboarding` in `daemon` scope if the Mac is intended to behave like a headless server.
-- Set `BRIEFING_DELIVERY_MODE=direct` if this Mac itself should send the 09:00 / 21:00 Telegram briefings.
-- Optional add-ons:
-  - Use `sidae publish` when you want refreshed iCloud dashboard artifacts or precomputed external-briefing files.
-  - Keep browser-driven helpers in `agent` scope only when you explicitly need those optional surfaces.
+cp .env.example .env
+```
 
-Delivery modes:
+개발/테스트까지 같이 설치하려면 마지막 설치 명령을 아래처럼 바꿉니다.
 
-- `BRIEFING_DELIVERY_MODE=direct`
-  - Recommended for the current beta-critical path on an always-on Mac.
-  - `telegram-listener` sends 09:00 / 21:00 briefings directly from the local SQLite DB.
-- `BRIEFING_DELIVERY_MODE=precompute_only`
-  - Optional/non-critical path only. Use it when another scheduled sender (for example iPhone Shortcut or relay client) will deliver the messages.
-  - In this mode use `sidae publish` artifacts or the signed relay payloads instead of direct Mac-side Telegram sends.
+```bash
+./.venv/bin/python -m pip install -e ".[dev]"
+```
 
-## CLI
+## Telegram 봇 만들기
 
-- `sidae doctor`  
-  Validate config and dependencies, initialize SQLite DB, and print the resolved feature-flag state.
-- `sidae doctor --fix`  
-  Create missing local folders and print setup next steps.
-- `sidae init`  
-  Interactive wizard that writes `config.toml` and `.env`.
-- `sidae sync --all [--wait --timeout-seconds N]`  
-  Run one full pipeline pass: UClass -> UOS portal timetable -> Weather -> Telegram -> scheduled briefings -> local summaries -> daily digest -> optional storage publish.
-- `sidae sync-uclass [--wait --timeout-seconds N]`  
-  Run only the UClass ingestion path plus local review-event regeneration.
-- `sidae sync-weather [--wait --timeout-seconds N]`  
-  Run the local environment snapshot sync: KMA weather for the configured location plus Seoul district air quality for the configured district codes.
-- `sidae sync-telegram [--wait --timeout-seconds N]`  
-  Run one Telegram polling batch plus reminder dispatch.
-- `sidae telegram-listener [--poll-timeout-seconds 10 --error-backoff-seconds 2 --max-consecutive-errors 6]`  
-  Keep a long-running Telegram long-poll listener alive for near-immediate command replies, `/plan` reminder delivery, and direct 09:00 / 21:00 briefing sends.
-- `sidae send-briefings [--wait --timeout-seconds N]`  
-  Run only the scheduled Telegram morning/evening briefing sender once. Mainly useful for manual checks or legacy split scheduling.
-- `sidae uclass-poller [--interval-minutes 60 --connectivity-check-seconds 30 --sync-timeout-seconds 600]`  
-  Keep a UClass-first collector alive. It triggers once when the UClass host becomes reachable and then once per interval while connectivity stays up.
-- `sidae launchd install-weather-sync [--minute-offset 20 --sync-timeout-seconds 600] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall-weather-sync [--scope agent|daemon]`  
-  Install or remove a fixed hourly weather + Seoul air-quality sync job. The default `:20` offset avoids the `:00-:15` window where the Seoul cleanair site may still show the previous hour's data.
-- `sidae onboarding serve [--host 127.0.0.1 --port 8791]`  
-  Run the Telegram-driven onboarding web server behind a public HTTPS URL set by `ONBOARDING_PUBLIC_BASE_URL`.
-  Handles Moodle credential onboarding plus the UOS portal/browser follow-up paths used by `/connect`.
-- `sidae onboarding browser-login --school <name> --chat-id <id>`  
-  Open a persistent browser profile for schools that require browser-session onboarding.
-- `sidae publish`  
-  Optional: render dashboard snapshot to the configured storage root.
-  Also exports precomputed Telegram briefing files for today/tomorrow date-slots so another sender
-  (for example, an iPhone Shortcut or cloud worker) can deliver the last-sync snapshot even while the Mac is offline.
-- `sidae ops serve [--host 127.0.0.1 --port 8793]`  
-  Run the live local-only operations dashboard on the runtime Mac.
-- `sidae ops open-remote [--ssh-host <runtime-host> --open-browser]`
-  Open the runtime Mac's local-only ops dashboard on the operator Mac through an SSH local tunnel.
-- `sidae gui`  
-  Optional: open a small macOS control panel that lets you choose full sync, Telegram-only polling, or status.
-  The selected job runs in Terminal, then a Korean summary popup is shown when it finishes.
-  A Finder-friendly launcher is also available at `deploy/macos/Sidae Secretary GUI.command`.
-  For the live ops dashboard, a Finder-friendly launcher is also available at `deploy/macos/Sidae Ops Dashboard.command`.
-- `sidae status`  
-  Show last run state and DB item counts.
-  Includes `feature_flags` with stable Telegram rollout keys:
-  `TELEGRAM_COMMANDS_ENABLED`, `TELEGRAM_SMART_COMMANDS_ENABLED`,
-  `TELEGRAM_ASSISTANT_ENABLED`, `TELEGRAM_ASSISTANT_WRITE_ENABLED`.
-  Includes dependency readiness in `deps` with stable keys:
-  `telegram_import_ok`, `llm_import_ok`,
-  `telegram_requests_import_ok`, `telegram_dateutil_import_ok`,
-  `llm_provider_supported`, `llm_provider_import_ok`,
-  `icalendar_import_ok`.
-- `sidae verify mobile-offline [--materials-check-limit N|--materials-check-all]`  
-  Optional: validate iPhone/iCloud offline readiness and choose sampled vs exhaustive material checks.
-- `sidae verify auth-attempts`  
-  Show recent onboarding auth attempts and suspicious remote sources.
-- `sidae verify closed-loop [--timeout-seconds N]`  
-  Run doctor readiness -> `sync --all --wait --timeout N` -> `verify mobile-offline` and emit one JSON report.
-- `sidae docs-artifacts [--check] [--require-clean-git]`  
-  Sync/validate `docs/snapshot.json`, `docs/audit.json`, `docs/SNAPSHOT.md`, `docs/AUDIT.md` metadata consistency.
-  Supports explicit mode: `sidae docs-artifacts sync` or `sidae docs-artifacts check`.
-- `sidae ack identity [--token <token>] [--expires-hours N]`  
-  Record an explicit human ACK required by the privacy gate when `INCLUDE_IDENTITY=true`.
-- `sidae tasks list --open`  
-  List open tasks.
-- `sidae tasks done --id <row_id|external_id>` / `sidae tasks ignore --id <row_id|external_id>`  
-  Mark tasks complete or ignored.
-- `sidae admin refresh-user`  
-  Refresh beta-critical surfaces for one user without running the full sync pipeline.
-- `sidae admin last-failed-stage`  
-  Inspect the most recent failed or degraded beta-critical stage.
-- `sidae buildings set --number <n> --name <name>` / `sidae buildings import --csv <file>` / `sidae buildings list`  
-  Manage building number mappings used for class location expansion.
-- `sidae buildings seed-uos [--overwrite]`  
-  Seed the built-in University of Seoul building map into DB.
-- `sidae courses list [--aliases]` / `sidae courses resolve --alias <text>` / `sidae courses alias-add --course <selector> --alias <text>` / `sidae courses alias-remove --course <selector> --alias <text>`  
-  Inspect canonical course entities and manage manual alias bindings used by `/today` and briefing matching.
-- `sidae reminders list [--status pending|sent|failed|cancelled]`  
-  Inspect scheduled Telegram reminders created by `/plan`.
-- `sidae uclass probe [--write-json|--json-out data/uclass_probe.json]`  
-  Probe configured Moodle wsfunctions and print an OK/FAIL/SKIP matrix.
-- `sidae inbox list`  
-  Show unprocessed inbox drafts.
-- `sidae inbox apply --id <id> | --all`  
-  Convert drafts into actionable DB records.
-- `sidae inbox ignore --id <id>`  
-  Mark inbox item as processed/ignored.
-- `sidae portal import --ics-url ... | --ics-file ... | --csv ...`  
-  Import academic dates and upsert to DB.
-- `sidae launchd install --time HH:MM[,HH:MM...] [--sync-timeout-seconds N] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall [--scope agent|daemon]`  
-  Install or remove one or more daily launchd schedules.
-- `sidae launchd install-uclass-poller [--interval-minutes 60 --connectivity-check-seconds 30 --sync-timeout-seconds 600] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall-uclass-poller [--scope agent|daemon]`  
-  Install or remove the long-running UClass-only collector.
-- `sidae launchd install-weather-sync [--minute-offset 20 --sync-timeout-seconds 600] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall-weather-sync [--scope agent|daemon]`  
-  Install or remove a fixed hourly weather + Seoul air-quality sync job.
-- `sidae launchd install-onboarding [--host 127.0.0.1 --port 8791] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall-onboarding [--scope agent|daemon]`  
-  Install or remove the long-running Moodle onboarding web server used by `/connect`.
-- `sidae launchd install-ops-dashboard [--host 127.0.0.1 --port 8793] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall-ops-dashboard [--scope agent|daemon]`  
-  Install or remove the live local-only ops dashboard service for the runtime Mac.
-- `sidae launchd install-publish [--interval-minutes 60] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall-publish [--scope agent|daemon]`  
-  Optional: install or remove an iCloud dashboard publish job for the current local DB snapshot.
-- `sidae launchd install-telegram-poller [--interval-minutes N] [--sync-timeout-seconds N] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall-telegram-poller [--scope agent|daemon]`  
-  Install or remove a lightweight Telegram-only poller. This is the legacy batch mode; prefer `telegram-listener`.
-- `sidae launchd install-telegram-listener [--poll-timeout-seconds 10 --error-backoff-seconds 2 --max-consecutive-errors 6] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall-telegram-listener [--scope agent|daemon]`  
-  Install or remove the long-running Telegram listener. This is the recommended Telegram runtime.
-- `sidae launchd install-briefings [--time 09:00,21:00 --sync-timeout-seconds 120] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall-briefings [--scope agent|daemon]`  
-  Install or remove the fixed-time Telegram briefing sender. Useful only when briefings are split away from `telegram-listener`.
-- `sidae launchd install-relay [--host 0.0.0.0 --port 8787] [--scope agent|daemon] [--run-as-user USER]` / `sidae launchd uninstall-relay [--scope agent|daemon]`  
-  Optional: install or remove a KeepAlive launchd job for the signed briefing relay.
-- `sidae relay serve [--host 127.0.0.1 --port 8787 --state-file ...]`  
-  Optional: run a signed relay that accepts precomputed briefing payloads and delivers them to Telegram without exposing the bot token to iPhone Shortcuts.
-- `sidae export --json-out data/export.json` / `sidae import --json <file>`  
-  Export/import local DB state as JSON.
-- `sidae backup --to-icloud`  
-  Create a timestamped iCloud backup zip with DB + JSON snapshot.
+1. Telegram에서 `@BotFather`를 엽니다.
+2. `/newbot`을 입력하고 이름과 사용자명을 정합니다.
+3. BotFather가 주는 token을 복사합니다.
+4. 새로 만든 봇에게 `/start` 메시지를 보냅니다.
+5. 아래 명령으로 `chat.id`를 확인합니다.
 
-## Telegram Commands
+```bash
+curl "https://api.telegram.org/bot<bot-token>/getUpdates"
+```
 
-- `/start`
-  - Welcome message and first-use guidance in Korean section format.
-- `/help`
-  - User-facing command summary grouped into basic and management commands.
-- `/connect [school name]`
-  - Issues a one-time onboarding link for supported school-account flows.
-  - For the current UOS product path, the built-in directory can bundle online-classroom connect with portal/timetable bootstrap behind the same onboarding flow.
-  - If the school name matches the built-in directory, the web form preselects the official LMS URL and may route through direct credential or browser-session follow-up depending on the school's auth mode.
-- `/setup`
-  - Current connection checklist for Telegram, UClass, UOS portal timetable access, and optional integrations, plus recommended next commands.
-- `/status`
-  - Stored counts, last successful sync, tracked source statuses, Telegram activity, and recent UClass result.
-- `/today`
-  - Today's meetings, classes, due tasks, and shortcut to detailed material summaries.
-- `/tomorrow`
-  - Tomorrow's meetings, classes, due tasks, and shortcut to detailed material summaries.
-- `/todaysummary`
-  - Brief summaries for today's class materials.
-- `/tomorrowsummary`
-  - Brief summaries for tomorrow's class materials.
-- `/weather`
-  - Current weather plus today's morning/afternoon forecast, tomorrow overview, and the latest Seoul district fine-dust readings from the last local sync.
-  - `/todayweather` remains available as a backward-compatible alias.
-- `/region <location>`
-  - Update the chat's default weather region/district used by `/weather`, briefings, and assistant weather reads.
-- `/notice_uclass`
-  - The 10 most recent online-classroom notifications stored by the latest UClass sync, rendered with source and last-sync context.
-- `/notice_general`
-  - The 10 most recent school general notices from the portal.
-- `/notice_academic`
-  - The 10 most recent school academic notices from the portal.
-- `/inbox`
-  - Inspect unprocessed draft items created from free-form Telegram messages, grouped with typed labels such as 일정/과제/메모.
-- `/apply <id|all>`
-  - Convert inbox draft(s) into real tasks/events.
-- `/done task <id|external_id>`
-  - Mark a task done.
-- `/plan <natural language instruction>`
-  - Available only when `TELEGRAM_SMART_COMMANDS_ENABLED=true`.
-  - Example: `/plan tomorrow 8am remind me to submit HW`
-  - Parsed result is stored in `telegram_reminders`, then dispatched automatically by `telegram-listener` or `sync-telegram`.
-- `/bot <natural language request>`
-  - Available only when `TELEGRAM_ASSISTANT_ENABLED=true`.
-  - Read-only requests work by default; state-changing assistant actions additionally require `TELEGRAM_ASSISTANT_WRITE_ENABLED=true`.
-  - Typical current actions are schedule/weather reads, one-time reminder creation, notification policy updates, and weather region changes.
-- If a chat is not in `TELEGRAM_ALLOWED_CHAT_IDS`, command replies stay blocked until `/setup` is used and the chat is explicitly allowed.
+응답 JSON에서 `message.chat.id` 값을 찾습니다. 이 값이 `TELEGRAM_ALLOWED_CHAT_IDS`에 들어갑니다.
 
-## launchd
+## 기본 설정
 
-You can still use the template:
+`.env`를 열어 최소한 아래 값을 채웁니다. `<...>` 부분은 본인 값으로 바꾸세요.
 
-- `deploy/launchd/com.sidae.secretary.plist.template`
+```dotenv
+STORAGE_ROOT_DIR=/path/to/SidaeSecretary
+DATABASE_PATH=data/sidae.db
+TIMEZONE=Asia/Seoul
 
-Or install directly from CLI:
+UCLASS_WS_BASE=https://uclass.uos.ac.kr/webservice/rest/server.php
+UCLASS_WSTOKEN=<optional-uclass-wstoken>
+UCLASS_USERNAME=
+UCLASS_PASSWORD=
 
-Beta-critical path:
-- `sidae launchd install-uclass-poller --interval-minutes 60 --connectivity-check-seconds 30 --sync-timeout-seconds 600 --scope daemon --run-as-user <mac_user>`
-- `sidae launchd install-weather-sync --minute-offset 20 --sync-timeout-seconds 600 --scope daemon --run-as-user <mac_user>`
-- `sidae launchd install-onboarding --host 127.0.0.1 --port 8791 --scope daemon --run-as-user <mac_user>`
-- `sidae launchd install-telegram-listener --poll-timeout-seconds 10 --error-backoff-seconds 2 --max-consecutive-errors 6 --scope daemon --run-as-user <mac_user>`
+UOS_OPENAPI_TIMETABLE_URL=https://wise.uos.ac.kr/COM/ApiTimeTable/list.do
+UOS_OPENAPI_TIMETABLE_API_KEY=<optional-uos-api-key>
 
-Optional/non-critical add-ons:
-- `sudo .venv/bin/sidae launchd install-ops-dashboard --host 127.0.0.1 --port 8793 --scope daemon --run-as-user <mac_user>`
-- `sidae launchd install-publish --interval-minutes 60 --scope agent`
-- `sidae launchd install-relay --host 0.0.0.0 --port 8787 --scope agent`
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN=<telegram-bot-token>
+TELEGRAM_ALLOWED_CHAT_IDS=<telegram-chat-id>
+TELEGRAM_COMMANDS_ENABLED=true
+TELEGRAM_SMART_COMMANDS_ENABLED=true
 
-Optional legacy batch jobs:
-- `sidae launchd install --time 08:50,20:50 --sync-timeout-seconds 600 --scope daemon --run-as-user <mac_user>`
-- `sidae launchd install-telegram-poller --interval-minutes 5 --sync-timeout-seconds 120 --scope daemon --run-as-user <mac_user>`
-- `sidae launchd install-briefings --time 09:00,21:00 --sync-timeout-seconds 120 --scope agent`
+BRIEFING_ENABLED=true
+BRIEFING_CHANNEL=telegram
+BRIEFING_DELIVERY_MODE=direct
+BRIEFING_MORNING_TIME_LOCAL=09:00
+BRIEFING_EVENING_TIME_LOCAL=21:00
 
-Scope guidance:
-- `--scope agent` writes to `~/Library/LaunchAgents` and loads into `gui/<uid>`.
-- `--scope daemon` writes to `/Library/LaunchDaemons`, loads into `system`, and requires `--run-as-user`.
-- Use `daemon` for headless collectors and listeners that should survive logout.
-- Keep optional browser-driven jobs in `agent` scope only when you explicitly need them.
-- All launchd install/uninstall commands support `--instance-name <name>` for parallel runtimes.
-  Leave it empty for the default production instance, or set `INSTANCE_NAME = "beta"` in the beta config so labels and log files stay separate automatically.
+ONBOARDING_PUBLIC_BASE_URL=
+```
 
-Generated launchd jobs now pin the exact Python executable:
-- `<sys.executable> -m sidae_secretary.cli sync --all --wait ...`
-- `--config-file` is always written as an absolute path.
-- `WorkingDirectory` is set to the resolved config directory.
+`STORAGE_ROOT_DIR`는 동기화 산출물과 자료를 둘 폴더입니다. 예를 들어 본인 홈 아래의 `SidaeSecretary` 폴더를 쓰고 싶다면 실제 절대경로로 넣습니다.
 
-If you change virtualenv or Python binary, reinstall the job:
-- `sudo .venv/bin/sidae launchd uninstall-uclass-poller --scope daemon`
-- `sudo .venv/bin/sidae launchd install-uclass-poller --interval-minutes 60 --connectivity-check-seconds 30 --sync-timeout-seconds 600 --scope daemon --run-as-user <mac_user>`
-- `sudo .venv/bin/sidae launchd uninstall-weather-sync --scope daemon`
-- `sudo .venv/bin/sidae launchd install-weather-sync --minute-offset 20 --sync-timeout-seconds 600 --scope daemon --run-as-user <mac_user>`
-- `sudo .venv/bin/sidae launchd uninstall-telegram-listener --scope daemon`
-- `sudo .venv/bin/sidae launchd install-telegram-listener --poll-timeout-seconds 10 --error-backoff-seconds 2 --max-consecutive-errors 6 --scope daemon --run-as-user <mac_user>`
+UClass 연결은 `/connect` 웹 로그인 또는 `UCLASS_WSTOKEN` 사용을 권장합니다. `UCLASS_USERNAME`과 `UCLASS_PASSWORD`는 호환용 fallback으로 남아 있지만 기본 권장 방식은 아닙니다.
 
-Optional add-ons:
-- `sudo .venv/bin/sidae launchd uninstall-ops-dashboard --scope daemon`
-- `sudo .venv/bin/sidae launchd install-ops-dashboard --host 127.0.0.1 --port 8793 --scope daemon --run-as-user <mac_user>`
-- `sidae launchd uninstall-publish --scope agent`
-- `sidae launchd install-publish --interval-minutes 60 --scope agent`
+`config.example.toml`을 복사해 `config.toml`로 쓰는 방식도 지원합니다. 둘 다 있으면 `config.toml`과 같은 폴더의 `.env`가 함께 로드됩니다.
 
-Optional legacy batch jobs:
-- `sudo .venv/bin/sidae launchd uninstall --scope daemon`
-- `sudo .venv/bin/sidae launchd install --time 08:50,20:50 --sync-timeout-seconds 600 --scope daemon --run-as-user <mac_user>`
-- `sudo .venv/bin/sidae launchd uninstall-telegram-poller --scope daemon`
-- `sudo .venv/bin/sidae launchd install-telegram-poller --interval-minutes 5 --sync-timeout-seconds 120 --scope daemon --run-as-user <mac_user>`
-- `sidae launchd uninstall-briefings --scope agent`
-- `sidae launchd install-briefings --time 09:00,21:00 --sync-timeout-seconds 120 --scope agent`
+## 첫 실행 확인
 
-Runtime note:
-- Optional interval-based jobs such as `publish` often show `state = not running` between scheduled executions. That is normal unless the last run recorded an error.
+설정 파일을 채운 뒤 먼저 로컬 설정을 확인합니다.
 
-## Git Deployment
+```bash
+./.venv/bin/sidae doctor --fix
+./.venv/bin/sidae status
+```
 
-- Keep one always-on runtime machine and push code from a separate development machine.
-- Leave `.env`, `data/`, and any local credential folders on the runtime Mac; they are deployment state, not git content.
-- Keep local development separate from production runtime state.
-- Recommended paths:
-  - Bare repo: `/path/to/git/UOS_secretary.git`
-  - Prod app tree: `/path/to/apps/UOS_secretary`
-  - Beta app tree: `/path/to/apps/UOS_secretary_beta`
-- Recommended beta config:
-  - `INSTANCE_NAME = "beta"`
-  - `SECRET_STORE_BACKEND = "file"` so `onboarding` and `telegram-listener` do not depend on the same login keychain session
-  - `ONBOARDING_ALLOWED_SCHOOL_SLUGS = ["uos_online_class", "uos_portal"]`
-  - `TELEGRAM_SMART_COMMANDS_ENABLED = true`
-  - `TELEGRAM_ASSISTANT_ENABLED = true`
-  - `TELEGRAM_ASSISTANT_WRITE_ENABLED = true`
-  - `LLM_ENABLED = true` so beta is the real `/bot` validation surface before prod promotion
-  - separate `DATABASE_PATH`, `STORAGE_ROOT_DIR`, Telegram bot token, and secret-store files from prod
-  - start from `config.beta.example.toml` instead of reusing prod config
-- Install the example bare-repo hook from `deploy/git/post-receive.bare.example` and adjust the placeholder paths.
-- The hook can map multiple deploy branches, for example `deploy` -> prod app tree and `beta` -> beta app tree, then runs `deploy/git/redeploy.sh` for the matching instance.
-- Before any deployment push, follow `docs/BETA_RELEASE_CHECKLIST_KO.md` and compare beta/prod runtime parity with `docs/BETA_PROD_PARITY_CHECKLIST_KO.md`.
-- From the development machine, deploy with:
-  - `git remote add <deploy-remote> <runtime-user>@<runtime-host>:/path/to/git/UOS_secretary.git`
-  - `git add . && git commit -m "..."`  
-  - `git push <deploy-remote> main:beta`
-  - After validation on the beta bot, confirm `HEAD` is still the tested commit and run `git push <deploy-remote> HEAD:deploy`
-- `deploy/git/redeploy.sh` reinstalls the editable package and kickstarts any already-loaded launchd jobs for that instance in either `system` or `gui/<uid>`.
+`UCLASS_WSTOKEN`을 이미 넣었거나 `/connect`로 계정 연결을 마친 뒤에는 아래 순서로 실제 동기화를 확인합니다.
 
-## Beta Release Checklist
+```bash
+./.venv/bin/sidae uclass probe
+./.venv/bin/sidae sync --all --wait --timeout-seconds 600
+./.venv/bin/sidae status
+```
 
-- Operator runbook: `docs/BETA_RELEASE_CHECKLIST_KO.md`
-- Required gates before beta push: release sanitization, beta-critical tests, `doctor` + `status`, one Telegram command smoke, one `/bot` smoke, one manual briefing preview.
-- Keep beta deploy (`git push <deploy-remote> HEAD:beta`) and prod promotion (`git push <deploy-remote> HEAD:deploy`) as separate steps.
-- If any secret-bearing artifact was exposed before sanitizing, rotate it using `docs/ops/secret-rotation.md`.
+`doctor`는 설정과 로컬 폴더를 확인합니다. `uclass probe`는 UClass 연결을 확인합니다. `sync --all`은 UClass, 시간표, 날씨, Telegram용 로컬 데이터를 한 번 동기화합니다.
 
-Recommended operator smoke order:
+## Telegram으로 사용하기
 
-1. `./.venv/bin/python -m sidae_secretary.cli doctor --config-file <target-config>`
-2. `./.venv/bin/python -m sidae_secretary.cli uclass probe --config-file <target-config>`
-3. `./.venv/bin/python -m sidae_secretary.cli status --config-file <target-config>`
-4. `./.venv/bin/python -m sidae_secretary.cli ops snapshot --config-file <target-config>`
-5. Compare onboarding local/public reachability for `/connect` changes:
-   - local: `http://127.0.0.1:8791/...`
-   - public: `ONBOARDING_PUBLIC_BASE_URL/...`
-6. In Telegram, verify `/setup` first, then one of `/today` or `/status`.
-7. In Telegram, verify `/bot 오늘 일정 알려줘` on beta.
-8. If beta assistant writes are enabled, verify one harmless write path such as `/bot 동대문구로 날씨 지역 바꿔줘`.
-9. `./.venv/bin/python -m sidae_secretary.cli publish --config-file <target-config>` and preview one generated briefing text file.
+처음에는 백그라운드 등록 전에 터미널에서 직접 listener를 실행해 보는 것이 좋습니다.
 
-Operator points to inspect:
+```bash
+./.venv/bin/sidae telegram-listener
+```
 
-- `status`:
-  - `health.overall_ready`
-  - critical surfaces under `health.surfaces`
-- `ops snapshot`:
-  - `headline`
-  - `instances[*].load_error`
-  - `instances[*].health_summary`
-  - `services.counts`
-- Telegram `/setup`:
-  - official API / UClass / Telegram readiness lines match the target instance
-- Telegram `/today`:
-  - no cross-instance cached content
-  - no stale "first sync pending" or timetable disconnect regression after a healthy official API sync
+이 터미널을 켜 둔 상태에서 Telegram 봇에게 아래 명령을 보내세요.
 
-## Notes
+```text
+/start
+/setup
+/status
+/today
+/tomorrow
+/weather
+```
 
-- Secrets are read from `.env` and should not be committed.
-- Beta defaults to file-backed secret storage when `INSTANCE_NAME` is `beta` unless `SECRET_STORE_BACKEND` is explicitly set.
-- If you switch an existing beta instance from keychain-backed secrets to file-backed secrets, reconnect each school account once so stored `secret_kind/ref` and `login_secret_kind/ref` rows are rewritten.
-- After deploying the per-user UClass HTML fallback change, reconnect each existing school account once so `login_secret_kind/ref` is populated.
-- If you use UClass ID/PW token refresh, prefer leaving `UCLASS_WSTOKEN=` blank so stale static tokens do not override the fresh login flow.
-- For UClass auth troubleshooting, run `sidae uclass probe` first. If it succeeds, `sidae sync-uclass --wait --timeout 600` should also work.
-- Path-like config settings are resolved against the selected config file directory, then normalized to absolute paths.
-  This includes at least: `DATABASE_PATH`, `ICLOUD_DIR`.
-- If timetable locations are in `building-room` form (example: `21-101`), load building mappings via `sidae buildings ...` to render friendly names in briefings.
-- Example: after mapping seed, class lines become `14:00에 100주년 기념관 311호에서 ... 수업`.
-- DB path default (before resolution) is `data/sidae.db`.
-- Dashboard `index.html` is self-contained (embedded JSON) and works in `file://` contexts.
-- Telegram replies, reminder dispatch, and direct briefings read the local SQLite DB directly; they do not read from iCloud Drive.
-- The current beta-critical path does not require iCloud dashboard publishing, GUI control, or relay delivery.
-- `sidae publish` writes precomputed Telegram briefing artifacts to:
-  - `SidaeSecretary/dashboard/telegram_briefings/index.json`
-  - date-slot payloads such as `SidaeSecretary/dashboard/telegram_briefings/2026-03-08-morning.json`
-  - date-slot text bodies such as `SidaeSecretary/dashboard/telegram_briefings/2026-03-08-morning.txt`
-- `sidae publish` is not a school-notice fetcher.
-  It renders the local DB snapshot to the iCloud dashboard and writes precomputed Telegram briefing files.
-- These files are based on the last successful sync/publish snapshot and are intended for an external scheduled sender.
-- If the external sender should be the only scheduled briefing sender, set `BRIEFING_DELIVERY_MODE=precompute_only`.
-- If `BRIEFING_RELAY_ENDPOINT` and `BRIEFING_RELAY_SHARED_SECRET` are configured, each date-slot JSON also includes a signed `relay_request` payload for an external sender.
-- Recommended always-on Mac setup:
-  - Mac collector: `sidae launchd install-uclass-poller --interval-minutes 60 --connectivity-check-seconds 30 --scope daemon --run-as-user <mac_user>`
-  - Weather sync: `sidae launchd install-weather-sync --minute-offset 20 --sync-timeout-seconds 600 --scope daemon --run-as-user <mac_user>`
-  - Telegram listener: `sidae launchd install-telegram-listener --poll-timeout-seconds 10 --error-backoff-seconds 2 --max-consecutive-errors 6 --scope daemon --run-as-user <mac_user>`
-  - Onboarding server: `sidae launchd install-onboarding --host 127.0.0.1 --port 8791 --scope daemon --run-as-user <mac_user>`
-  - Set `BRIEFING_DELIVERY_MODE=direct` if the Mac itself should send the 09:00 / 21:00 briefings.
-  - Optional add-ons: `publish`, relay delivery
-- Optional split for a Mac that is not always awake:
-  - Mac collector: `sidae launchd install-uclass-poller --interval-minutes 60 --connectivity-check-seconds 30 --scope daemon --run-as-user <mac_user>`
-  - Weather sync: `sidae launchd install-weather-sync --minute-offset 20 --sync-timeout-seconds 600 --scope daemon --run-as-user <mac_user>`
-  - External scheduled sender: use `sidae publish` precomputed briefing artifacts or the signed relay path
-  - In that case set `BRIEFING_DELIVERY_MODE=precompute_only`
-- Optional delivery split:
-  - Mac: `sync --all`, LLM summarization, iCloud publish, signed precompute only
-  - iPhone Shortcut or another external sender: read date-slot JSON and POST `relay_request.body` to the relay endpoint at the exact send time
-  - Relay host: store Telegram bot token + `BRIEFING_RELAY_SHARED_SECRET`, reject duplicate `item_key`, send via Telegram Bot API
-- Optional P2 flags are available in `config.example.toml` / `.env.example`:
-  - Material extraction + briefing (`MATERIAL_EXTRACTION_ENABLED`, `MATERIAL_BRIEFING_ENABLED`)
-  - Material brief Telegram push (`MATERIAL_BRIEF_PUSH_ENABLED`, `MATERIAL_BRIEF_PUSH_MAX_ITEMS`)
-  - Spaced review scheduler (`REVIEW_ENABLED`, `REVIEW_INTERVALS_DAYS`, `REVIEW_DURATION_MIN`)
-  - Daily digest push (`DIGEST_ENABLED`, `DIGEST_TIME_LOCAL`, `DIGEST_CHANNEL`)
-  - Morning/evening briefing push (`BRIEFING_ENABLED`, `BRIEFING_MORNING_TIME_LOCAL`, `BRIEFING_EVENING_TIME_LOCAL`, `BRIEFING_DELIVERY_MODE`, `BRIEFING_RELAY_ENDPOINT`, `BRIEFING_RELAY_SHARED_SECRET`, `BRIEFING_TASK_LOOKAHEAD_DAYS`)
-- Notification delivery policy precedence:
-  - `notification_policies` is evaluated first for `briefing_morning` (`morning_briefing` alias), `briefing_evening` (`evening_briefing` alias), `daily_digest`, and `material_brief_push`.
-  - If a matching `notification_policies` row exists for that user and kind, it overrides legacy booleans in `user_preferences`.
-  - If no matching policy row exists, delivery falls back to the existing `user_preferences` boolean plus the configured/connected default chat selection.
-  - Prefer `days_of_week_json` values in `mon`-`sun` form. `time_local` is interpreted in the policy timezone when present, otherwise the user timezone and then the instance timezone fallback.
-- Optional P3 flags:
-  - Telegram command control (`TELEGRAM_COMMANDS_ENABLED`)
-  - Telegram natural-language reminder planning (`TELEGRAM_SMART_COMMANDS_ENABLED`)
-  - Telegram natural-language assistant entrypoint (`TELEGRAM_ASSISTANT_ENABLED`, default `false`)
-  - Telegram assistant state-changing actions (`TELEGRAM_ASSISTANT_WRITE_ENABLED`, default `false`; keep off unless assistant writes are intentionally enabled)
-  - Closed beta recommendation: turn both assistant flags on with `LLM_ENABLED=true`, then promote to prod only after beta `/bot` validation
-  - UClass ID/PW auto-token (`UCLASS_USERNAME`, `UCLASS_PASSWORD`, `UCLASS_TOKEN_SERVICE`, `UCLASS_TOKEN_ENDPOINT`)
+응답이 정상이라면 기본 사용 준비가 끝난 것입니다.
 
-## Privacy Gate (`INCLUDE_IDENTITY`)
+## 주요 Telegram 명령어
 
-- Default: `INCLUDE_IDENTITY=false` (normal behavior).
-- When `INCLUDE_IDENTITY=true`, outbound identity-sensitive steps are gated:
-  - Telegram digest send
-  - Telegram command replies
-  - LLM summary calls
-- Without ACK, these steps return a structured warning gate payload with
-  `error=identity_ack_required` and no external send occurs.
-- Grant ACK explicitly:
-  - `sidae ack identity --expires-hours 24`
-  - or `sidae ack identity --token <token> --expires-hours 24`
+- `/start`: 시작 안내
+- `/help`: 명령어 목록
+- `/setup`: 현재 연결 상태와 다음 설정 안내
+- `/status`: 마지막 동기화 상태와 저장된 데이터 개수
+- `/today`: 오늘 수업, 일정, 과제
+- `/tomorrow`: 내일 수업, 일정, 과제
+- `/todaysummary`: 오늘 수업 자료 요약
+- `/tomorrowsummary`: 내일 수업 자료 요약
+- `/weather`: 현재 지역 날씨와 미세먼지
+- `/region <지역>`: 날씨 기본 지역 변경
+- `/notice_uclass`: 최근 UClass 공지
+- `/notice_general`: 최근 학교 일반 공지
+- `/notice_academic`: 최근 학교 학사 공지
+- `/plan <내용>`: Telegram 리마인더 생성
+- `/inbox`: 자유 입력으로 쌓인 임시 항목 확인
+- `/apply <id|all>`: 임시 항목을 실제 일정/과제로 반영
+- `/done task <id>`: 할 일 완료 처리
+- `/connect`: 웹 기반 계정 연결 링크 발급
 
-## Testing
+## `/connect` 웹 로그인 사용
 
-Hermetic Python 3.11 workflow:
+`/connect`는 Telegram에서 일회용 로그인 링크를 받고, 브라우저에서 학교 계정을 연결하는 흐름입니다. 이 기능을 쓰려면 onboarding 서버가 실행 중이어야 합니다.
 
-1. Create the repo venv: `python3.11 -m venv .venv`
-2. Install the project and test dependencies: `./.venv/bin/python -m pip install --upgrade pip && ./.venv/bin/python -m pip install -e .[dev]`
-3. Run the beta-critical suite: `./.venv/bin/python -m pytest -q -m beta_critical`
-4. Run the full suite when needed: `./.venv/bin/python -m pytest -q`
+로컬에서 먼저 실행합니다.
 
-Beta-critical test set:
+```bash
+./.venv/bin/sidae onboarding serve --host 127.0.0.1 --port 8791
+```
 
-- `tests/test_beta_critical_path.py`
-  Focused fixture-driven coverage for UOS official API normalization, per-user weather, unified day-brief matching, and notice commands.
-- `tests/test_p4_uos_portal_timetable.py`
-  UOS official API and portal fallback timetable behavior.
-- `tests/test_p3_uclass_payload_variants.py`
-  UClass payload normalization for notifications, assignments, and forum notices.
-- `tests/test_p4_uclass_sync_stages.py`
-  UClass sync-stage behavior for the beta ingestion path.
-- `tests/test_weather_kma.py`
-  Hermetic KMA weather connector coverage.
-- `tests/test_portal_notices.py`
-  Hermetic UOS portal notice parsing coverage.
+외부 Telegram 앱에서 링크를 열려면 `http://127.0.0.1:8791`을 공개 HTTPS 주소로 전달해야 합니다. 예시는 다음과 같습니다.
 
-CI uses the same command in `.github/workflows/beta-critical.yml`.
+- Tailscale Funnel
+- Cloudflare Tunnel
+- 본인 도메인과 Nginx/Caddy 리버스 프록시
 
-## Docs Artifacts Workflow
+HTTPS 주소를 준비한 뒤 `.env`에 아래처럼 넣습니다.
 
-1. Run tests: `./.venv/bin/python -m pytest -q`
-2. Refresh docs artifacts: `sidae docs-artifacts sync`
-3. Validate consistency (non-zero on divergence): `sidae docs-artifacts check --require-clean-git`
+```dotenv
+ONBOARDING_PUBLIC_BASE_URL=https://your-domain.example
+```
 
-## Troubleshooting: `urllib3` `NotOpenSSLWarning`
+주의할 점:
 
-- Triggering environment:
-  - macOS runtime where Python `ssl` is linked to LibreSSL (for example, Apple system Python),
-  - plus `urllib3>=2` import path, usually through `requests`.
-- Symptom:
-  - warning similar to `urllib3 v2 only supports OpenSSL 1.1.1+ ... currently the 'ssl' module is compiled with 'LibreSSL'`.
-- Recommended setup:
-  - Use Python from Homebrew or python.org that reports `OpenSSL` from `ssl.OPENSSL_VERSION`.
-  - Recreate venv and reinstall: `rm -rf .venv && python3.11 -m venv .venv && ./.venv/bin/python -m pip install -e .[dev]`
-- Temporary fallback (if runtime cannot be changed immediately):
-  - pin `urllib3<2` in that environment only.
+- 공개 URL은 반드시 HTTPS여야 합니다.
+- 학교 계정 로그인 화면을 원격에서 여는 기능이므로 주소를 함부로 공유하지 마세요.
+- 로컬 `http://127.0.0.1:8791/...`은 같은 Mac에서만 테스트용으로 사용하세요.
+
+## 백그라운드 실행
+
+터미널에서 직접 실행했을 때 문제가 없으면 macOS `launchd`에 등록해 항상 켜둘 수 있습니다.
+
+```bash
+sudo ./.venv/bin/sidae launchd install-uclass-poller \
+  --interval-minutes 60 \
+  --connectivity-check-seconds 30 \
+  --sync-timeout-seconds 600 \
+  --scope daemon \
+  --run-as-user "$(whoami)"
+
+sudo ./.venv/bin/sidae launchd install-weather-sync \
+  --minute-offset 20 \
+  --sync-timeout-seconds 600 \
+  --scope daemon \
+  --run-as-user "$(whoami)"
+
+sudo ./.venv/bin/sidae launchd install-telegram-listener \
+  --poll-timeout-seconds 10 \
+  --error-backoff-seconds 2 \
+  --max-consecutive-errors 6 \
+  --scope daemon \
+  --run-as-user "$(whoami)"
+```
+
+`/connect`를 계속 쓸 경우 onboarding 서버도 등록합니다.
+
+```bash
+sudo ./.venv/bin/sidae launchd install-onboarding \
+  --host 127.0.0.1 \
+  --port 8791 \
+  --scope daemon \
+  --run-as-user "$(whoami)"
+```
+
+상태 확인:
+
+```bash
+./.venv/bin/sidae status
+```
+
+백그라운드 작업을 제거하려면 아래 명령을 씁니다.
+
+```bash
+sudo ./.venv/bin/sidae launchd uninstall-uclass-poller --scope daemon
+sudo ./.venv/bin/sidae launchd uninstall-weather-sync --scope daemon
+sudo ./.venv/bin/sidae launchd uninstall-telegram-listener --scope daemon
+sudo ./.venv/bin/sidae launchd uninstall-onboarding --scope daemon
+```
+
+## 로컬 데이터와 보안
+
+민감 정보가 들어갈 수 있는 위치입니다.
+
+- `.env`: Telegram token, 학교 계정, API key
+- `config.toml`: 설정을 TOML로 관리할 경우 민감 정보 포함 가능
+- `data/sidae.db`: 로컬 SQLite DB
+- `data/secret_store*`: 로컬 secret 저장소
+- `credentials/`: 브라우저나 외부 인증에 쓰는 로컬 자격 증명
+
+권장 사항:
+
+- 위 파일과 폴더를 Git에 커밋하지 마세요.
+- token이나 비밀번호가 노출됐다고 생각되면 즉시 폐기하거나 회전하세요.
+- Telegram bot token은 BotFather에서 재발급할 수 있습니다.
+- `data/`를 삭제하면 로컬 동기화 상태와 캐시가 사라집니다. 삭제 전에는 필요한 자료를 백업하세요.
+
+## 문제 해결
+
+`doctor`에서 Python SSL 경고가 납니다.
+
+- Homebrew 또는 python.org의 Python 3.11 이상으로 가상환경을 다시 만드세요.
+
+Telegram 봇이 답하지 않습니다.
+
+- `TELEGRAM_BOT_TOKEN`이 맞는지 확인하세요.
+- 봇에게 `/start`를 한 번 보냈는지 확인하세요.
+- `TELEGRAM_ALLOWED_CHAT_IDS`에 본인 chat id가 들어갔는지 확인하세요.
+- `./.venv/bin/sidae telegram-listener`가 실행 중인지 확인하세요.
+
+UClass 연결이 실패합니다.
+
+- `UCLASS_WS_BASE`가 서울시립대 UClass 주소인지 확인하세요.
+- `UCLASS_USERNAME`, `UCLASS_PASSWORD`가 맞는지 확인하세요.
+- 학교 인증 방식이 바뀐 경우 `/connect` 흐름을 사용하세요.
+
+`/connect` 링크가 열리지 않습니다.
+
+- 먼저 같은 Mac에서 `http://127.0.0.1:8791`이 열리는지 확인하세요.
+- 로컬은 열리는데 공개 URL이 실패하면 터널, DNS, 리버스 프록시 설정 문제일 가능성이 큽니다.
+- `ONBOARDING_PUBLIC_BASE_URL`은 `https://...`로 시작해야 합니다.
+
+동기화 상태를 초기화하고 싶습니다.
+
+1. launchd 작업을 중지합니다.
+2. 필요한 파일을 백업합니다.
+3. `data/` 폴더 또는 `DATABASE_PATH`에 지정한 DB를 삭제합니다.
+4. `doctor --fix`와 `sync --all`을 다시 실행합니다.
+
+## 개발과 테스트
+
+테스트 의존성을 설치한 뒤 기본 테스트를 실행합니다.
+
+```bash
+./.venv/bin/python -m pip install -e ".[dev]"
+./.venv/bin/python -m pytest -q
+```
+
+공개 배포용 staging을 만들 때는 sanitizer를 사용합니다.
+
+```bash
+./.venv/bin/python scripts/sanitize_release.py create dist/public --force
+./.venv/bin/python scripts/sanitize_release.py validate dist/public
+```
+
+## 공개 저장소에 올리기 전 확인
+
+개인 설정 파일과 런타임 산출물이 포함되지 않았는지 확인하세요.
+
+```bash
+git status --short
+git grep -n -E "/Users/[A-Za-z0-9._-]+|[0-9]{1,3}(\\.[0-9]{1,3}){3}"
+git grep -n -E "(TOKEN|PASSWORD|SECRET|API_KEY)=([A-Za-z0-9_./+=:-]{12,})" -- . ':!README.md' ':!.env.example' ':!config.example.toml' ':!tests/*'
+```
+
+실제 token, 비밀번호, 내부 호스트명, 개인 절대경로가 보이면 커밋하지 말고 먼저 제거하세요.
